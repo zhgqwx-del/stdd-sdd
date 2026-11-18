@@ -47,10 +47,10 @@ make check
 | --- | --- | --- |
 | 产品 | [变更](changes/archive/002-free-shipping-threshold/change.md)和[规格](changes/archive/002-free-shipping-threshold/spec.md) | 确定门槛、刚好达到时的结果及要保留的行为 |
 | 设计 | [体验设计](changes/archive/002-free-shipping-threshold/ux-design.md) | 写下不同报价对应的展示与失败状态。这个演练用函数验收报价 |
-| 研发 | [技术设计](changes/archive/002-free-shipping-threshold/design.md)和[任务](changes/archive/002-free-shipping-threshold/tasks.md) | 确定修改位置、兼容边界和交付顺序 |
+| 研发 | [任务](changes/archive/002-free-shipping-threshold/tasks.md)和[技术设计示例](changes/archive/002-free-shipping-threshold/design.md) | 在练习副本的 `tasks.md` 写明修改位置、关键取舍和验收方式。复杂变更可另写技术设计 |
 | 测试 | [验收计划](changes/archive/002-free-shipping-threshold/test-plan.md)和[证据](changes/archive/002-free-shipping-threshold/verification.md) | 验证门槛前后、恰好达到门槛和无效输入，记录实际结果 |
 
-在真实项目里，先请业务负责人确认会影响结果的规则，再推进对应的实现。这个演练使用 `REQ-SHIP-001` 调整门槛，同时让 `REQ-SHIP-002` 的输入校验继续通过。
+在真实项目里，先确认规则和简短实施方案，再开始测试和实现。这个演练的修改点是 `shipping/quote.py`，沿用整数分和 `>=`，用门槛前、中、后三个输入验收 `REQ-SHIP-001`，并复测 `REQ-SHIP-002` 的输入校验。
 
 ## 第三步 先让新测试失败
 

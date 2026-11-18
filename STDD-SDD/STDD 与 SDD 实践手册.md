@@ -18,13 +18,14 @@ flowchart TD
     end
 
     Init["新建项目或接入已有项目<br/>默认 team + all"]
-    Start["$stdd-start<br/>为新需求建立变更和验收草稿"]
+    Start["$stdd-start<br/>核对基线与分支，起草变更"]
     Diagnose["$stdd-diagnose<br/>复现缺陷并形成回归场景"]
-    Spec["确认这次的规格与验收场景"]
+    Spec["起草规格、验收场景和简短实施方案"]
+    Confirm{"规格和实施方案已确认？"}
     Delivery["$stdd-delivery<br/>先写验收测试，再实现并复跑"]
     Report["$stdd-test-report<br/>把实际结果写入 verification.md"]
     Review["$stdd-review<br/>核对代码、规格和受测证据"]
-    Wrap["$stdd-wrap<br/>同步规格和任务，准备 PR 或交接"]
+    Wrap["$stdd-wrap<br/>提交前检查并准备 PR 或交接"]
     Done["按项目流程合入或交接"]
     Release["$stdd-release-notes<br/>按版本范围整理发布说明或迭代总结"]
 
@@ -36,7 +37,9 @@ flowchart TD
     Init -->|收到缺陷反馈| Diagnose
     Start --> Spec
     Diagnose -->|决定修复后| Spec
-    Spec --> Delivery
+    Spec --> Confirm
+    Confirm -->|已确认| Delivery
+    Confirm -->|待确认或需调整| Spec
     Delivery --> Report
     Report -->|关键场景通过| Review
     Report -->|发现实现问题| Delivery
@@ -46,7 +49,7 @@ flowchart TD
     Done -.->|准备发版或总结迭代时| Release
 ```
 
-七个研发技能随 `team` 或 `demo` 生成。只生成 `spec` 时，可以先沿项目入口评审规格与验收计划。团队习惯先开 PR 时，可先用 `$stdd-wrap` 准备草稿，再在 PR 中用 `$stdd-review`。 [已完成的运费演练](../stdd-use-demo/README.md)
+七个研发技能随 `team` 或 `demo` 生成。首个变更已有草稿时，先用现有文档完善规格和实施方案。确认后开始写测试与实现。只生成 `spec` 时，可以先评审规格、方案和验收计划。团队习惯先开 PR 时，可先用 `$stdd-wrap` 准备草稿，再在 PR 中用 `$stdd-review`。 [已完成的运费演练](../stdd-use-demo/README.md)
 
 ## 1. 方法与标准
 
@@ -83,7 +86,7 @@ flowchart TD
 | --- | --- | --- |
 | 1. 确定范围 | 读取现行规范与代码，找出调用方、现状、目标和明确排除的范围 | 需求负责人确认目标，关键未决问题可定位到具体行为 |
 | 2. 定义验收 | 给行为分配 `REQ-*`，用 `AC-*` 描述主路径、边界、失败和需要保留的行为 | 需求方确认预期输出或副作用，开发能据此写断言 |
-| 3. 设计切片 | 按一个可验收结果拆任务。跨服务、迁移或兼容变更补设计和契约 | 每项任务有场景 ID、依赖和完成条件 |
+| 3. 确认实施方案 | 记录修改入口、关键取舍和验收方式，按一个可验收结果拆任务。复杂变更补设计和契约 | 实施方案得到确认，任务关联场景 ID、依赖和完成条件 |
 | 4. 写测试并观察失败 | 对本次变化从稳定入口写验收或回归测试，在可运行的旧实现上先执行 | 失败来自行为断言和预期差异。记录命令和失败内容 |
 | 5. 实现、通过、重构 | 完成当前切片，复跑定向测试，通过后重构，再跑完整检查 | 新用例和原有回归都通过，规格与契约已同步 |
 | 6. 评审、合并和归档 | 评审选例、断言和证据，更新主分支现行规范，归档本次变更 | PR 可追溯到已确认的规格、受测提交和 CI。手工或延后验证有记录和负责人 |
@@ -199,7 +202,7 @@ project/
 | [change.md](.agents/skills/init-stdd/assets/starter/docs/stdd/templates/change.md) | 为什么改、改哪些规则、旧行为和目标行为、未决问题 | 首次提案和关键口径变化 |
 | [design.md](.agents/skills/init-stdd/assets/starter/docs/stdd/templates/design.md) 或 `plan.md` | 入口、实现方案、架构权衡、兼容性、迁移和回滚 | 方案影响实现、兼容或运维时。长期设计决策可独立为 [ADR](.agents/skills/init-stdd/assets/starter/docs/stdd/templates/adr.md) |
 | [ux-design.md](.agents/skills/init-stdd/assets/starter/docs/stdd/templates/ux-design.md) | 用户流程、界面状态及对应验收场景 | 需要评审用户体验或补原型时 |
-| [tasks.md](.agents/skills/init-stdd/assets/starter/docs/stdd/templates/tasks.md) | 按可验收切片写任务、AC、依赖与完成条件 | 任务拆分、依赖或进度变化 |
+| [tasks.md](.agents/skills/init-stdd/assets/starter/docs/stdd/templates/tasks.md) | 简短实施方案、确认记录，以及按可验收切片写任务、AC、依赖与完成条件 | 方案、确认状态、任务拆分或进度变化 |
 | [test-plan.md](.agents/skills/init-stdd/assets/starter/docs/stdd/templates/test-plan.md) | 场景、输入、验证层级、操作和预期 | 范围、场景或测试入口变化时 |
 | [verification.md](.agents/skills/init-stdd/assets/starter/docs/stdd/templates/verification.md) | ID 到用例的映射、命令、运行环境和结果，或 CI/手工证据链接 | 定向测试、回归或手工验收实际执行后 |
 | [SKILL.md](.agents/skills/init-stdd/assets/starter/.agents/skills/stdd-delivery/SKILL.md) | 使用场景、应读文件、步骤、检查和交付物 | 交付或评审流程出现需要固化的重复经验 |
@@ -239,19 +242,21 @@ project/
 
 | 原技能 | 脚手架里的做法 |
 | --- | --- |
-| `dev-start` | `$stdd-start` 读取需求、现行规格和技术约定，可用 `new_change.py` 生成变更文件 |
-| `branch-review`、`ptal` | `$stdd-review` 对照目标分支、验收预期和受测证据。Git 查询用 `git_range.py`，提交整理沿用项目 Git 流程 |
+| `dev-start` | `$stdd-start` 核对基线、合入目标及仓库分支约定，写简短实施方案并确认。项目需要时可刷新远端或创建分支，复杂变更补 `design.md` |
+| `branch-review`、`ptal` | `$stdd-review` 对照候选范围、调用方、验收预期和受测证据。`$stdd-wrap` 运行项目适用的提交前检查，按需串联 Git 同步和提交整理 |
 | `test-report` | `$stdd-test-report` 运行项目检查，把自动化、失败、人工验证和待验场景记进本次变更的 `verification.md` |
-| `dev-wrap` | `$stdd-wrap` 同步规格、任务和验收证据，准备交接及 PR |
+| `dev-wrap` | `$stdd-wrap` 同步规格、任务和验收证据，准备交接及 PR。仓库策略决定 rebase 和 squash 的使用位置 |
 | `issue-diagnose` | `$stdd-diagnose` 从任务提供的反馈和日志建立可复跑的回归场景，项目反馈平台由项目接入 |
 | `release-diff`、`weekly-summary` | `$stdd-release-notes` 从明确版本范围或项目合入记录生成说明，附规格与验收状态 |
 | `dynamic-config`、`release-in-portal`、`release-in-ota` | 项目需要时补配置契约或平台发布 Skill，使用项目自己的类型、命令、发布规则和验收 |
 | `mono-workspace` | 多仓任务按需接入既有技能与其目录生成器，继续用同一规格和各仓受测 SHA 做联合验收 |
 
+基线选择、拉取更新和建分支要适配仓库实际工作方式。可以配置先取远端引用、按快进更新本地基线，或从指定引用开分支和工作树。rebase 与 squash 适合有相应约定的项目，整理后以最终候选的内容和证据为准。 [Git 工作方式](.agents/skills/init-stdd/assets/base/docs/stdd/git-workflow.md)
+
 可直接把下面的任务发给仓库里的 Codex。
 
 ```text
-用 $stdd-delivery 交付 changes/014-order-cancellation 中已确认的 AC-ORDER-003。
+用 $stdd-delivery 交付 changes/014-order-cancellation 中已确认方案和验收口径的 AC-ORDER-003。
 先读现行规范和受影响的契约，补一个能从公开入口观察行为的回归测试。
 在旧实现上运行它并记录失败断言，再实现。跑定向测试和 make check，
 将命令、结果与测试路径写入 verification.md。发现验收口径冲突时，

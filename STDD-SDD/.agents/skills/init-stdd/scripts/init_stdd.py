@@ -82,6 +82,8 @@ def build_plan(args, target: Path, directories: tuple[Path, ...]) -> dict[Path, 
         "CHANGE_TITLE": args.change_title.strip(),
         "CHANGE_ID": args.change_id,
         "EXTRA_README": extras[args.profile],
+        "DESIGN_LINK": f" · [技术设计](../../changes/{args.change_id}/design.md)" if args.design else "",
+        "DESIGN_HANDOFF": "和[技术设计](design.md)" if args.design else "",
         "SKILLS_ROOT": directories[0].as_posix(),
         "SKILL_CALLS": "\n".join(
             "- " + (CALLS.get(directory) or f"请 Agent 阅读 `{directory.as_posix()}/stdd-start/SKILL.md` 并按步骤执行。")
@@ -102,7 +104,10 @@ def build_plan(args, target: Path, directories: tuple[Path, ...]) -> dict[Path, 
     seed = Path("changes") / args.change_id
     for name in ("change.md", "spec.md"):
         files[seed / name] = render(ASSETS / "seed" / name)
-    for name in ("ux-design.md", "design.md", "tasks.md", "test-plan.md", "verification.md"):
+    documents = ["ux-design.md", "tasks.md", "test-plan.md", "verification.md"]
+    if args.design:
+        documents.append("design.md")
+    for name in documents:
         template = files[Path("docs/stdd/templates") / name].decode("utf-8")
         files[seed / name] = template.replace("<变更名称>", fields["CHANGE_TITLE"], 1).encode("utf-8")
 
@@ -159,6 +164,7 @@ def main() -> None:
     parser.add_argument("--skills-only", action="store_true", help="Add skill directories to an initialized project")
     parser.add_argument("--change-id", default="001-first-slice")
     parser.add_argument("--change-title", default="首个可验收切片")
+    parser.add_argument("--design", action="store_true", help="Include a technical design document for the first change")
     parser.add_argument("--dry-run", action="store_true", help="Print the file plan without writing")
     args = parser.parse_args()
 

@@ -13,7 +13,7 @@ def main() -> None:
     parser.add_argument("change_id", help="Directory name, for example 014-order-cancellation")
     parser.add_argument("title", help="Title shown in the change documents")
     parser.add_argument("--design", action="store_true", help="Include design.md")
-    parser.add_argument("--roles", action="store_true", help="Include the draft spec, UX design, technical design and test plan")
+    parser.add_argument("--roles", action="store_true", help="Include the draft spec, UX design and test plan")
     args = parser.parse_args()
 
     if not re.fullmatch(r"[0-9]+-[a-z0-9]+(?:-[a-z0-9]+)*", args.change_id):
@@ -28,7 +28,7 @@ def main() -> None:
         parser.error(f"change is already archived: {args.change_id}")
 
     names = ["change.md", "tasks.md", "verification.md"]
-    if args.design or args.roles:
+    if args.design:
         names.append("design.md")
     if args.roles:
         names.extend(("spec.md", "ux-design.md", "test-plan.md"))

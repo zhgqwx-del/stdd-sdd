@@ -16,5 +16,5 @@
 
 - 产品维护[需求与验收场景](spec.md)。
 - 设计维护[体验设计](ux-design.md)，将关键状态关联到场景。
-- 研发维护[技术设计](design.md)和[实施任务](tasks.md)。
+- 研发维护[实施方案与任务](tasks.md){{DESIGN_HANDOFF}}。
 - 测试维护[验收计划](test-plan.md)和[实际验收记录](verification.md)。

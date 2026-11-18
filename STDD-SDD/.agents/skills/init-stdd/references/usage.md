@@ -26,13 +26,14 @@ flowchart TD
     end
 
     Init["新建项目或接入已有项目<br/>默认 team + all"]
-    Start["$stdd-start<br/>为新需求建立变更和验收草稿"]
+    Start["$stdd-start<br/>核对基线与分支，起草变更"]
     Diagnose["$stdd-diagnose<br/>复现缺陷并形成回归场景"]
-    Spec["确认这次的规格与验收场景"]
+    Spec["起草规格、验收场景和简短实施方案"]
+    Confirm{"规格和实施方案已确认？"}
     Delivery["$stdd-delivery<br/>先写验收测试，再实现并复跑"]
     Report["$stdd-test-report<br/>把实际结果写入 verification.md"]
     Review["$stdd-review<br/>核对代码、规格和受测证据"]
-    Wrap["$stdd-wrap<br/>同步规格和任务，准备 PR 或交接"]
+    Wrap["$stdd-wrap<br/>提交前检查并准备 PR 或交接"]
     Done["按项目流程合入或交接"]
     Release["$stdd-release-notes<br/>按版本范围整理发布说明或迭代总结"]
 
@@ -44,7 +45,9 @@ flowchart TD
     Init -->|收到缺陷反馈| Diagnose
     Start --> Spec
     Diagnose -->|决定修复后| Spec
-    Spec --> Delivery
+    Spec --> Confirm
+    Confirm -->|已确认| Delivery
+    Confirm -->|待确认或需调整| Spec
     Delivery --> Report
     Report -->|关键场景通过| Review
     Report -->|发现实现问题| Delivery
@@ -54,7 +57,7 @@ flowchart TD
     Done -.->|准备发版或总结迭代时| Release
 ```
 
-项目已经生成首个变更时，从确认该变更的规格继续。团队先开 PR 时，可以先用 `stdd-wrap` 准备草稿，再在 PR 中用 `stdd-review`。
+项目已经生成首个变更时，先完善并确认规格和 `tasks.md` 中的实施方案，再进入开发。直接调用 `stdd-delivery` 时也会检查确认记录。团队先开 PR 时，可以先用 `stdd-wrap` 准备草稿，再在 PR 中用 `stdd-review`。
 
 ## 配置决定要生成什么
 
@@ -73,7 +76,13 @@ python3 -B scripts/init_stdd.py ../stdd-training --profile demo
 | `team`（默认） | `spec` 的全部内容，加原脚手架的通用 Skill、脚本和 PR 模板。项目测试和 CI 使用团队实际技术栈 |
 | `demo` | `team` 的全部内容，加运费示例、四个可运行验收用例、`Makefile` 与 GitHub Actions。适合空目录或复跑同一教学项目 |
 
-`--name` 缺省使用目标目录名，`--goal` 缺省标记待定义。起始变更目录为 `changes/001-first-slice/`，可用 `--change-id` 选其他 ID，用 `--change-title` 指定首个切片名称。CLI 将已知目标带入文档。通过 Skill 调用时，Agent 还会根据目标和现有项目事实完善首个切片的草稿。
+`--name` 缺省使用目标目录名，`--goal` 缺省标记待定义。起始变更目录为 `changes/001-first-slice/`，可用 `--change-id` 选其他 ID，用 `--change-title` 指定首个切片名称。CLI 将目标带入草稿，并在 `tasks.md` 提供实施方案起点。复杂变更加 `--design`，生成单独的 `design.md`。通过 Skill 调用时，Agent 会根据目标和项目事实起草方案。
+
+## 方案和 Git 工作方式
+
+`stdd-start` 默认先写简短实施方案，说明修改入口、关键取舍和如何验收。方案确认后，`stdd-delivery` 先写测试，再实现和复跑。已经有同范围确认记录时可以直接引用。
+
+基线、远端同步、分支创建及合入策略记录在仓库规则中。初始化后的 `docs/stdd/git-workflow.md` 提供配置参考。`stdd-wrap` 串联项目提交前检查，按约定选择 rebase 或 squash，并记录实际受测候选。
 
 ## 运行运费教学配置
 
@@ -109,6 +118,8 @@ python3 -B scripts/init_stdd.py /path/to/existing-repo --skills-only --agent all
 python3 -B scripts/init_stdd.py /path/to/existing-repo --skills-only --agent all
 ```
 
-`team` 或 `demo` 项目后续可用 `stdd-start`，也可运行 `python3 -B scripts/new_change.py 002-next-change "下一项变更" --roles` 为下一项变更生成四角色文档。现行规格检查覆盖 `specs/` 中已交付的行为，草稿在变更评审时核对。
+`team` 或 `demo` 项目后续可用 `stdd-start`，也可运行 `python3 -B scripts/new_change.py 002-next-change "下一项变更" --roles` 为下一项变更生成四角色文档。需要单独的技术设计时叠加 `--design`。现行规格检查覆盖 `specs/` 中已交付的行为，草稿在变更评审时核对。
+
+升级已有 STDD 项目时，先更新 `init-stdd` 技能包，再把新版七个研发技能、任务模板和 Git 约定按需合入项目。初始化器会保留同名文件，可在临时目录生成新版项目作为比对样本。
 
 生成器会将目标中不同内容的同名文件标为 `KEEP`，内容相同标为 `UNCHANGED`，无法作为目录使用的路径标为 `BLOCKED`。重跑可补缺失项。目标子路径上的符号链接会保留并跳过。已有 `AGENTS.md` 或 README 时，可以根据现行写法增加指向 `docs/stdd/project.md` 的入口。`spec` 和 `team` 可以接入已有项目，应用代码、测试和交付命令沿用当前仓库。

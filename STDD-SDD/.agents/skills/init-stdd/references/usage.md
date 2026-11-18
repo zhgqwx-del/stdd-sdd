@@ -1,8 +1,40 @@
 # 使用 init-stdd
 
-把 `init-stdd.zip` 交给团队成员。解压后可直接运行初始化脚本，也可将整个 `init-stdd` 目录放到所用工具的技能目录，在 Agent 会话里调用。脚本和模板资源随 `SKILL.md` 一起分发。当前工作区可从 `STDD-SDD` 目录开启 Codex 会话调用 `$init-stdd`。
+下载 [最新版 `init-stdd.zip`](https://github.com/zhgqwx-del/stdd-sdd/releases/latest/download/init-stdd.zip)。解压得到完整的 `init-stdd/`，其中包含 `SKILL.md`、脚本和模板资源。以下命令适用于 macOS 和 Linux，需要 Python 3.9 或以上版本。请按实际情况调整 ZIP 下载路径。
 
-在 Codex 里可以直接用一句话调用。
+## 方式一：在项目外运行脚本（已有项目优先）
+
+将 `stdd_target` 改为已有项目根目录的绝对路径。以下命令可从任意目录运行，每次解压到 `~/stdd-tools/` 下的新目录。
+
+```sh
+stdd_target="/path/to/existing-project"
+stdd_tools="$HOME/stdd-tools"
+mkdir -p "$stdd_tools"
+stdd_bundle="$(mktemp -d "$stdd_tools/bundle.XXXXXX")"
+unzip "$HOME/Downloads/init-stdd.zip" -d "$stdd_bundle"
+stdd_script="$stdd_bundle/init-stdd/scripts/init_stdd.py"
+python3 -B "$stdd_script" "$stdd_target" --dry-run
+```
+
+检查预览中的 `CREATE`（新增）、`KEEP`（保留同名文件）和 `BLOCKED`（跳过受阻路径），确认后在同一终端执行。
+
+```sh
+python3 -B "$stdd_script" "$stdd_target"
+```
+
+默认 `team` + `all` 会把项目文档、变更模板、三个脚本、PR 模板和三个工具的七个研发技能放入目标项目。`init-stdd` 留在解压目录，可复用。脚本生成协作骨架和变更草稿。准备开始首个需求时，用 `stdd-start` 核对现有行为、记录接入基线，并完善生成的首个变更草稿。 [已有项目接入流程](existing-project.md)
+
+## 方式二：在项目里安装并调用技能
+
+如果希望 Agent 根据目标起草规格和验收，可以将完整的 `init-stdd/` 解压到目标项目的技能目录。在目标项目根目录执行以下命令。Codex 用 `.agents/skills`，Claude Code 换成 `.claude/skills`，Qoder 换成 `.qoder/skills`。已经解压到该目录的项目可以直接调用。
+
+```sh
+stdd_skills=".agents/skills"
+mkdir -p "$stdd_skills"
+unzip "$HOME/Downloads/init-stdd.zip" -d "$stdd_skills"
+```
+
+在 Agent 里打开目标项目根目录。Codex 用 `$init-stdd`，Claude Code 和 Qoder 用 `/init-stdd`。
 
 ```text
 用 $init-stdd 初始化一个会议室预约项目到 room-booking。目标是让员工按时段预约会议室，避免重复占用。先给产品、设计、研发和测试一个可评审的起点。
@@ -11,6 +43,23 @@
 也可以只说「用 `$init-stdd` 给当前项目接入 STDD」，或「用 `$init-stdd` 初始化 `design-kickoff`，先搭产品和设计评审所需文档」。
 
 已有代码的项目可以说「用 `$init-stdd` 给当前项目接入 STDD。先核对现有行为和测试入口，再为『消息发送失败后可重试』起草规格和验收计划」。接入时记录实际运行基线，并把本次目标与需要保留的行为写清楚。 [已有项目接入流程](existing-project.md)
+
+### 初始化后移出 init-stdd
+
+项目内安装的 `init-stdd/` 在运行后仍留在原位。若由团队统一维护，可在初始化完成后从目标项目根目录运行以下命令。将 `stdd_skills` 设置为实际安装目录。
+
+```sh
+stdd_skills=".agents/skills"
+stdd_tools="$HOME/stdd-tools"
+mkdir -p "$stdd_tools"
+if [ -e "$stdd_tools/init-stdd" ] || [ -L "$stdd_tools/init-stdd" ]; then
+  printf '%s\n' "已有 $stdd_tools/init-stdd，请将 stdd_tools 改成另一个项目外目录。" >&2
+else
+  mv "$stdd_skills/init-stdd" "$stdd_tools/"
+fi
+```
+
+移动的是 `init-stdd/` 整个目录。七个 `stdd-*` 技能、`docs/stdd/`、`changes/`、脚本和 PR 模板都可以随项目提交。`init-stdd` 之前已提交时，把移出后的删除变更一并提交。以后需要时，可从项目外直接运行移动后的 `init-stdd/scripts/init_stdd.py`。
 
 ## 三个入口与七个技能
 

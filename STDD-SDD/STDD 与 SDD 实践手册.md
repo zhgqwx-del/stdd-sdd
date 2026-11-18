@@ -21,11 +21,12 @@ flowchart TD
     Start["$stdd-start<br/>核对基线与分支，起草变更"]
     Diagnose["$stdd-diagnose<br/>复现缺陷并形成回归场景"]
     Spec["起草规格、验收场景和简短实施方案"]
+    Records["按项目约定记录讨论或 ADR<br/>从 change.md 链接"]
     Confirm{"规格和实施方案已确认？"}
     Delivery["$stdd-delivery<br/>先写验收测试，再实现并复跑"]
     Report["$stdd-test-report<br/>把实际结果写入 verification.md"]
     Review["$stdd-review<br/>核对代码、规格和受测证据"]
-    Wrap["$stdd-wrap<br/>提交前检查并准备 PR 或交接"]
+    Wrap["$stdd-wrap<br/>提交前检查、归档核对链接<br/>准备 PR 或交接"]
     Done["按项目流程合入或交接"]
     Release["$stdd-release-notes<br/>按版本范围整理发布说明或迭代总结"]
 
@@ -38,6 +39,8 @@ flowchart TD
     Start --> Spec
     Diagnose -->|决定修复后| Spec
     Spec --> Confirm
+    Spec -.->|多轮讨论或长期取舍| Records
+    Records --> Confirm
     Confirm -->|已确认| Delivery
     Confirm -->|待确认或需调整| Spec
     Delivery --> Report
@@ -160,7 +163,7 @@ OpenSpec 2.x 在 Codex 聊天中可用 `$openspec-explore`、`$openspec-propose`
 
 ## 4. 仓库目录与每份 Markdown 的职责
 
-下列结构适用于带测试入口的轻量项目。`docs/adr/`、`contracts/` 和更多测试分层随变更需要添加。演练中将免邮门槛从 99 元调整到 129 元的记录位于 `changes/archive/002-free-shipping-threshold/`。 [演练的项目入口](../stdd-use-demo/docs/stdd/project.md)
+下列结构适用于带测试入口的轻量项目。讨论目录、ADR 目录、`contracts/` 和更多测试分层随需要添加。演练中将免邮门槛从 99 元调整到 129 元的记录位于 `changes/archive/002-free-shipping-threshold/`。 [演练的项目入口](../stdd-use-demo/docs/stdd/project.md)
 
 ```text
 project/
@@ -168,7 +171,8 @@ project/
 ├── AGENTS.md                              # Agent 的仓库入口、命令与约束
 ├── docs/
 │   ├── engineering.md                     # 工程原则与交付规则
-│   ├── adr/                               # 长期架构决策，按需
+│   ├── discussions/                       # 跨角色或多轮讨论，按需
+│   ├── decisions/                         # 长期架构决策，沿用已有的 adr/ 或 decisions/
 │   ├── stdd/project.md                     # 项目目标与四角色入口
 │   ├── stdd/workflows.md                   # 研发阶段、技能与脚本入口
 │   └── stdd/templates/                    # 各份 Markdown 的复制模板
@@ -211,6 +215,8 @@ project/
 **给每类信息一个权威位置。** 规范描述主分支可观察行为，API 字段和格式在契约里维护，变更记录保存决策与前后差异，测试代码保存可执行断言。采用某个工具后用它生成的原生目录承接相应职责，其他入口用链接指向规范。若 `.feature` 是由业务和工程共同维护的场景正文，`spec.md` 可按需求 ID 链接场景。生产版本通过发布标记或部署记录关联对应提交。
 
 **小变更可合并文档。** 一个低风险 Bug 可以在 PR 里写清旧行为、目标行为、场景 ID 和回归证据，同步相应规范。时间较长的功能保留独立变更目录，复杂迁移补设计。单仓按能力组织规格，多个服务可以就近维护各自的能力规范。跨仓则指定一个所有者维护共享契约，消费仓库引用版本，并在变更记录里写生产者、消费者、兼容窗口和发布顺序。
+
+**讨论与 ADR 按影响范围放置。** 单次待决事项留在 `change.md`。需要多轮评审、跨角色讨论或跟踪备选方案时，沿用项目讨论目录，缺省用 `docs/discussions/`。长期决定查已有 ADR 和项目约定，沿用 `docs/adr/` 或 `docs/decisions/`。首次需要且两处均不存在时再建 `docs/adr/`。在 `change.md` 链接相关记录，归档后修正变更与外部文档之间的相对链接。 [讨论模板](.agents/skills/init-stdd/assets/starter/docs/stdd/templates/discussion.md) · [演练中的关联记录](../stdd-use-demo/changes/archive/002-free-shipping-threshold/change.md)
 
 ### 跨需求复用的约定与单次变更
 

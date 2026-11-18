@@ -73,4 +73,6 @@ make test-acceptance
 
 在练习副本的 `verification.md` 记录旧实现为什么失败、新实现跑了什么、看到什么结果。勾选已完成的任务，再将变更移入 `changes/archive/` 并更新项目入口链接。团队项目可在 PR 中链接规格差异、用例与实际受测提交。
 
+本演练的 `change.md` 还链接了金额单位的讨论和 ADR。打开其中任意一份记录，都可以反查已归档的变更。 [讨论与 ADR 示例](changes/archive/002-free-shipping-threshold/change.md#关联讨论与-adr)
+
 以后在项目根目录启动新的 Codex 会话，可以用 `$stdd-start` 建立下一项变更，再用 `$stdd-delivery` 实现，用 `$stdd-test-report` 补齐验收证据。 [项目与四角色入口](docs/stdd/project.md) · [研发技能与脚本](docs/stdd/workflows.md)

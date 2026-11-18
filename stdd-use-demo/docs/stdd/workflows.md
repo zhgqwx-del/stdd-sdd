@@ -14,11 +14,12 @@ flowchart TD
     Start["stdd-start<br/>核对基线与分支，起草变更"]
     Diagnose["stdd-diagnose<br/>复现缺陷并形成回归场景"]
     Spec["起草规格、验收场景和简短实施方案"]
+    Records["按项目约定记录讨论或 ADR<br/>从 change.md 链接"]
     Confirm{"规格和实施方案已确认？"}
     Delivery["stdd-delivery<br/>先写验收测试，再实现并复跑"]
     Report["stdd-test-report<br/>把实际结果写入 verification.md"]
     Review["stdd-review<br/>核对代码、规格和受测证据"]
-    Wrap["stdd-wrap<br/>提交前检查并准备 PR 或交接"]
+    Wrap["stdd-wrap<br/>提交前检查、归档核对链接<br/>准备 PR 或交接"]
     Done["按项目流程合入或交接"]
     Release["stdd-release-notes<br/>按版本范围整理发布说明或迭代总结"]
 
@@ -28,6 +29,8 @@ flowchart TD
     Start --> Spec
     Diagnose -->|决定修复后| Spec
     Spec --> Confirm
+    Spec -.->|多轮讨论或长期取舍| Records
+    Records --> Confirm
     Confirm -->|已确认| Delivery
     Confirm -->|待确认或需调整| Spec
     Delivery --> Report
@@ -45,12 +48,12 @@ flowchart TD
 
 | 阶段 | 技能 | 工作产物 |
 | --- | --- | --- |
-| 开工 | [stdd-start](../../.agents/skills/stdd-start/SKILL.md) | 基线和分支、规格、简短实施方案及待确认事项 |
+| 开工 | [stdd-start](../../.agents/skills/stdd-start/SKILL.md) | 基线和分支、规格、简短实施方案、相关讨论和 ADR |
 | 实现 | [stdd-delivery](../../.agents/skills/stdd-delivery/SKILL.md) | 按已确认方案和场景编写用例、实现并复跑 |
 | 排查 | [stdd-diagnose](../../.agents/skills/stdd-diagnose/SKILL.md) | 用[诊断模板](templates/diagnosis.md)记录复现、影响范围及回归场景 |
 | 验收 | [stdd-test-report](../../.agents/skills/stdd-test-report/SKILL.md) | 按场景记录自动、手工及待验结果 |
 | 审查 | [stdd-review](../../.agents/skills/stdd-review/SKILL.md) | 对照规格、候选差异和受测证据的发现 |
-| 收尾 | [stdd-wrap](../../.agents/skills/stdd-wrap/SKILL.md) | 提交前检查、最终受测版本和按 [PR 模板](../../.github/pull_request_template.md)整理的草稿 |
+| 收尾 | [stdd-wrap](../../.agents/skills/stdd-wrap/SKILL.md) | 提交前检查、归档链接、最终受测版本和按 [PR 模板](../../.github/pull_request_template.md)整理的草稿 |
 | 版本 | [stdd-release-notes](../../.agents/skills/stdd-release-notes/SKILL.md) | 按[版本说明模板](templates/release.md)整理差异、影响、兼容及验收状态 |
 
 ## 脚本
@@ -73,3 +76,5 @@ python3 -B scripts/git_range.py v1.0.0 v1.1.0
 在工程说明里记录项目实际的构建、测试和 CI 命令。运费教学模式可用 `make trace` 查规格引用，`make test-acceptance` 跑定向验收，`make check` 跑规格检查和全部测试。工具与脚本的命令需要随项目技术栈调整。团队需要发布、动态配置或多仓编排时，可针对实际接口、环境和权限补充独立技能并关联验收证据。
 
 基线、远端同步与创建分支按[项目 Git 约定](git-workflow.md)执行。收尾时先完成约定的候选同步，再验证最终候选。rebase 和 squash 根据项目工作方式与任务授权选用。
+
+需要单独讨论或记录长期决策时，按[讨论与架构决策](decisions-and-discussions.md)选择位置，在 `change.md` 关联讨论与 ADR，归档时核对双向链接。

@@ -13,6 +13,11 @@
 
 当前演练覆盖报价逻辑和验收边界。优惠、配送区域、加急费用和完整结算页面由对应的后续需求定义。
 
+## 关联讨论与 ADR
+
+- [跨角色讨论示例](../../../docs/discussions/shipping-amount-unit.md)记录产品展示、接口金额和测试数据共用什么单位。
+- [ADR-0001 运费报价使用整数分](../../../docs/decisions/ADR-0001-shipping-amount-unit.md)记录本次继续沿用的报价契约，影响 `REQ-SHIP-001` 和 `REQ-SHIP-002`。
+
 ## 角色交接
 
 - 产品维护[需求与验收场景](spec.md)。

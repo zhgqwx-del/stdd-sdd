@@ -29,11 +29,12 @@ flowchart TD
     Start["$stdd-start<br/>核对基线与分支，起草变更"]
     Diagnose["$stdd-diagnose<br/>复现缺陷并形成回归场景"]
     Spec["起草规格、验收场景和简短实施方案"]
+    Records["按项目约定记录讨论或 ADR<br/>从 change.md 链接"]
     Confirm{"规格和实施方案已确认？"}
     Delivery["$stdd-delivery<br/>先写验收测试，再实现并复跑"]
     Report["$stdd-test-report<br/>把实际结果写入 verification.md"]
     Review["$stdd-review<br/>核对代码、规格和受测证据"]
-    Wrap["$stdd-wrap<br/>提交前检查并准备 PR 或交接"]
+    Wrap["$stdd-wrap<br/>提交前检查、归档核对链接<br/>准备 PR 或交接"]
     Done["按项目流程合入或交接"]
     Release["$stdd-release-notes<br/>按版本范围整理发布说明或迭代总结"]
 
@@ -46,6 +47,8 @@ flowchart TD
     Start --> Spec
     Diagnose -->|决定修复后| Spec
     Spec --> Confirm
+    Spec -.->|多轮讨论或长期取舍| Records
+    Records --> Confirm
     Confirm -->|已确认| Delivery
     Confirm -->|待确认或需调整| Spec
     Delivery --> Report
@@ -83,6 +86,12 @@ python3 -B scripts/init_stdd.py ../stdd-training --profile demo
 `stdd-start` 默认先写简短实施方案，说明修改入口、关键取舍和如何验收。方案确认后，`stdd-delivery` 先写测试，再实现和复跑。已经有同范围确认记录时可以直接引用。
 
 基线、远端同步、分支创建及合入策略记录在仓库规则中。初始化后的 `docs/stdd/git-workflow.md` 提供配置参考。`stdd-wrap` 串联项目提交前检查，按约定选择 rebase 或 squash，并记录实际受测候选。
+
+## 讨论与架构决策
+
+单次待决事项留在 `change.md`。跨角色、跨变更或多轮讨论可用 `docs/discussions/`，长期架构决策沿用项目指定的目录或已有的 `docs/adr/`、`docs/decisions/`。初始化后的 `docs/stdd/decisions-and-discussions.md` 说明目录选择和归档时怎样修正双向链接。
+
+`stdd-start` 在 `change.md` 的「关联讨论与 ADR」链接相关记录。`stdd-wrap` 归档时复核变更、讨论和 ADR 之间的链接。已有项目合入新版时，可补上该规则及 `docs/stdd/templates/discussion.md`、`adr.md`、`change.md` 中相应的字段。
 
 ## 运行运费教学配置
 

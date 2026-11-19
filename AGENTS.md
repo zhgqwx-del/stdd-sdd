@@ -26,7 +26,16 @@
 - 三种配置为 `spec`、`team`、`demo`，默认 `team`；技能目录默认 `all`，另支持单工具、自动识别、便携目录及自定义目录。
 - 初始化器只新增缺失文件，保留已有同名文件；`--dry-run` 只预览，`--skills-only` 补技能。保持 `CREATE`、`KEEP`、`UNCHANGED`、`BLOCKED` 的语义。
 - `assets/starter/` 中的运费基线为 99 元，`stdd-use-demo/` 是已完成 129 元变更的演练。同步通用技能、模板和脚本时核对两处；保留教学前后版本的预期差异。
-- `STDD-SDD/init-stdd.zip` 分发完整的 `init-stdd/` 目录。更新技能包时同步核对 ZIP 与源码，避免只改 ZIP 或只改演练副本。
+- `STDD-SDD/init-stdd.zip` 分发完整的 `init-stdd/` 目录，按下方流程维护。
+
+## 三个入口的同步与发布
+
+每次更新 `init-stdd` 或其分发的 `stdd-*` 技能，按以下顺序完成交付。
+
+1. 同步[实践手册](<STDD-SDD/STDD 与 SDD 实践手册.md>)和[技能源码](STDD-SDD/.agents/skills/init-stdd/)，核对技能行为、使用步骤和示例是否一致。涉及的快速上手、使用说明、生成模板和演练副本一并更新。
+2. 从技能源码重新构建 [init-stdd.zip](STDD-SDD/init-stdd.zip)，核对文件清单及逐文件内容，解压后验证受影响的初始化配置。通过后提交并推送这批更新。
+3. 在 GitHub Releases 发布指向该提交的版本，上传仓库中的同一份 `init-stdd.zip`，并设为 Latest。
+4. 发布后从快速上手的[下载最新版](https://github.com/zhgqwx-del/stdd-sdd/releases/latest/download/init-stdd.zip)链接实际下载，确认获取的是刚发布的附件，并比对下载文件与仓库 ZIP 的 SHA-256。交付时记录版本、提交和下载验证结果。
 
 ## 维护约定
 

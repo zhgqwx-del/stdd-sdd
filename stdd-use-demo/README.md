@@ -76,3 +76,5 @@ make test-acceptance
 本演练的 `change.md` 还链接了金额单位的讨论和 ADR。打开其中任意一份记录，都可以反查已归档的变更。 [讨论与 ADR 示例](changes/archive/002-free-shipping-threshold/change.md#关联讨论与-adr)
 
 以后在项目根目录启动新的 Codex 会话，可以用 `$stdd-start` 建立下一项变更，再用 `$stdd-delivery` 实现，用 `$stdd-test-report` 补齐验收证据。 [项目与四角色入口](docs/stdd/project.md) · [研发技能与脚本](docs/stdd/workflows.md)
+
+在有远端的团队项目里，准备提交或 PR 时用 `$stdd-wrap` 刷新真实合入目标，按策略快进或 rebase，处理冲突后同步变化的依赖并复跑检查，记录目标 SHA 与实际受测内容。这个教学演练也可以仅在本地重跑，此时注明本地验收状态即可。 [收尾同步与冲突处理](docs/stdd/git-workflow.md#收尾同步)

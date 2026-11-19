@@ -83,7 +83,7 @@ flowchart TD
     Delivery["$stdd-delivery<br/>先写验收测试，再实现并复跑"]
     Report["$stdd-test-report<br/>把实际结果写入 verification.md"]
     Review["$stdd-review<br/>核对代码、规格和受测证据"]
-    Wrap["$stdd-wrap<br/>提交前检查、归档核对链接<br/>准备 PR 或交接"]
+    Wrap["$stdd-wrap<br/>刷新目标、按策略同步并复测<br/>归档、PR 或交接"]
     Done["按项目流程合入或交接"]
     Release["$stdd-release-notes<br/>按版本范围整理发布说明或迭代总结"]
 
@@ -134,7 +134,11 @@ python3 -B scripts/init_stdd.py ../stdd-training --profile demo
 
 `stdd-start` 默认先写简短实施方案，说明修改入口、关键取舍和如何验收。方案确认后，`stdd-delivery` 先写测试，再实现和复跑。已经有同范围确认记录时可以直接引用。
 
-基线、远端同步、分支创建及合入策略记录在仓库规则中。初始化后的 `docs/stdd/git-workflow.md` 提供配置参考。`stdd-wrap` 串联项目提交前检查，按约定选择 rebase 或 squash，并记录实际受测候选。
+基线、真实合入目标、远端和同步策略记录在 `change.md` 或仓库规则中。功能分支的 upstream 不一定是合入目标。`stdd-start` 以远端为基线时先刷新并记录 SHA，离线时注明本地来源和未刷新状态。
+
+准备提交或 PR 时，`stdd-wrap` 默认 fetch 真实目标并固定本轮 SHA，按提交关系跳过、快进或 rebase。未发布的本次提交和项目允许改写的个人分支适用 rebase；共享历史、脏工作区和已有 Git 操作按初始化后的 `docs/stdd/git-workflow.md` 处理。语义冲突保留现场并列出待决定事项。同步及冲突处理完成后，同步发生变化的依赖，重跑定向验收和项目要求的检查，再记录受测候选及交付状态。已有项目规定 merge、仅中途交接或没有远端时，沿用实际范围并注明状态。
+
+七个技能可由 Agent 直接执行，不依赖参考项目的 `ptal`、固定任务号、Bun 或发布平台。squash、提交、推送和创建 PR 沿用项目策略及已有任务授权。`stdd-review` 固定目标与候选版本并从候选读取代码；`stdd-test-report` 核对用例数量和旧证据版本；缺陷诊断记录资料来源与复现状态，版本说明区分快照差异和时间窗内的合入记录。
 
 ## 讨论与架构决策
 
@@ -178,6 +182,6 @@ python3 -B scripts/init_stdd.py /path/to/existing-repo --skills-only --agent all
 
 `team` 或 `demo` 项目后续可用 `stdd-start`，也可运行 `python3 -B scripts/new_change.py 002-next-change "下一项变更" --roles` 为下一项变更生成四角色文档。需要单独的技术设计时叠加 `--design`。现行规格检查覆盖 `specs/` 中已交付的行为，草稿在变更评审时核对。
 
-升级已有 STDD 项目时，先更新 `init-stdd` 技能包，再把新版七个研发技能、任务模板和 Git 约定按需合入项目。初始化器会保留同名文件，可在临时目录生成新版项目作为比对样本。
+升级已有 STDD 项目时，先更新 `init-stdd` 技能包，再在临时目录生成新版项目作比对，按需合入七个研发技能、Git 约定、工作流、变更和验收等模板及 PR 模板。此次收尾同步增强涉及这些现有文件；初始化器和 `--skills-only` 都会保留内容不同的同名文件，重跑不会自动覆盖为新版。合入时保留项目自己的分支、测试及发布规则。
 
 生成器会将目标中不同内容的同名文件标为 `KEEP`，内容相同标为 `UNCHANGED`，无法作为目录使用的路径标为 `BLOCKED`。重跑可补缺失项。目标子路径上的符号链接会保留并跳过。已有 `AGENTS.md` 或 README 时，可以根据现行写法增加指向 `docs/stdd/project.md` 的入口。`spec` 和 `team` 可以接入已有项目，应用代码、测试和交付命令沿用当前仓库。

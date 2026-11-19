@@ -1,6 +1,6 @@
 # STDD 与 SDD 实践手册
 
-工具文档核对日期为 2026 年 11 月 17 日。企业实践与人机分工补充于 2026 年 11 月 18 日。
+工具文档核对日期为 2026 年 11 月 17 日。企业实践与人机分工补充于 2026 年 11 月 18 日，研发技能对比及收尾同步流程完善于 2026 年 11 月 19 日。
 
 在新项目中，可以先选一个可独立交付的业务规则。Agent 起草可观察的规范和验收场景，负责人确认影响结果的业务取舍，开发用验收测试驱动实现。每个有行为变化的 PR 都能追到改动的规则、对应场景和受测提交的结果。配套的[运费报价演练](../stdd-use-demo/README.md)用一次免运费门槛变更演示这个过程。
 
@@ -26,7 +26,7 @@ flowchart TD
     Delivery["$stdd-delivery<br/>先写验收测试，再实现并复跑"]
     Report["$stdd-test-report<br/>把实际结果写入 verification.md"]
     Review["$stdd-review<br/>核对代码、规格和受测证据"]
-    Wrap["$stdd-wrap<br/>提交前检查、归档核对链接<br/>准备 PR 或交接"]
+    Wrap["$stdd-wrap<br/>刷新目标、按策略同步并复测<br/>归档、PR 或交接"]
     Done["按项目流程合入或交接"]
     Release["$stdd-release-notes<br/>按版本范围整理发布说明或迭代总结"]
 
@@ -248,16 +248,20 @@ project/
 
 | 原技能 | 脚手架里的做法 |
 | --- | --- |
-| `dev-start` | `$stdd-start` 核对基线、合入目标及仓库分支约定，写简短实施方案并确认。项目需要时可刷新远端或创建分支，复杂变更补 `design.md` |
-| `branch-review`、`ptal` | `$stdd-review` 对照候选范围、调用方、验收预期和受测证据。`$stdd-wrap` 运行项目适用的提交前检查，按需串联 Git 同步和提交整理 |
-| `test-report` | `$stdd-test-report` 运行项目检查，把自动化、失败、人工验证和待验场景记进本次变更的 `verification.md` |
-| `dev-wrap` | `$stdd-wrap` 同步规格、任务和验收证据，准备交接及 PR。仓库策略决定 rebase 和 squash 的使用位置 |
-| `issue-diagnose` | `$stdd-diagnose` 从任务提供的反馈和日志建立可复跑的回归场景，项目反馈平台由项目接入 |
-| `release-diff`、`weekly-summary` | `$stdd-release-notes` 从明确版本范围或项目合入记录生成说明，附规格与验收状态 |
+| `dev-start` | `$stdd-start` 刷新已确认的远端基线，记录基线 SHA、真实合入目标、同步策略、测试入口与已知失败，再起草规格及实施方案。分支方式沿用项目约定 |
+| `branch-review` | `$stdd-review` 固定目标与候选 SHA，从实际候选读取代码，沿调用方及删除影响检查增量。工作区审查包含相关未跟踪文件，报告注明未深入审查和未实测范围 |
+| `test-report` | `$stdd-test-report` 按受影响场景组织自动与手工验收，记录用例数量及失败、阻塞、跳过状态，复用旧产物前核对版本。报告不修改业务代码，也不把零条预期用例或未验场景计为通过 |
+| `dev-wrap`、`ptal` | `$stdd-wrap` 承接文档同步、目标刷新、按策略 rebase、冲突处理、依赖同步和复测，在 `verification.md` 记录最终受测内容。项目约定决定共享历史、squash 和推送方式 |
+| `issue-diagnose` | `$stdd-diagnose` 核对反馈时段、时区、资料来源、应用版本与本地代码差异，区分已复现事实及根因假设，再建立回归场景。反馈平台由项目接入 |
+| `release-diff`、`weekly-summary` | `$stdd-release-notes` 固定比较版本，区分快照差异和时间窗内的主线合入记录。合并同功能条目，同时核对修复、撤回、依赖及兼容变化，并关联验收状态 |
 | `dynamic-config`、`release-in-portal`、`release-in-ota` | 项目需要时补配置契约或平台发布 Skill，使用项目自己的类型、命令、发布规则和验收 |
 | `mono-workspace` | 多仓任务按需接入既有技能与其目录生成器，继续用同一规格和各仓受测 SHA 做联合验收 |
 
-基线选择、拉取更新和建分支要适配仓库实际工作方式。可以配置先取远端引用、按快进更新本地基线，或从指定引用开分支和工作树。rebase 与 squash 适合有相应约定的项目，整理后以最终候选的内容和证据为准。 [Git 工作方式](.agents/skills/init-stdd/assets/base/docs/stdd/git-workflow.md)
+原 `dev-wrap` 把 rebase 和提交前检查交给 `ptal`。通用脚手架直接在 `stdd-wrap` 承接这些步骤，项目无需额外安装 `ptal` 或其检查脚本。参考项目的固定分支、任务号格式、Bun 命令、日志规则、迭代周历和发布接口由接入项目自行约定。`stdd-delivery` 继续负责已确认切片的测试先行与实现；无需为技能对齐另建重复流程。
+
+默认收尾先刷新真实目标并固定 SHA，再根据提交关系跳过、快进或 rebase。工作区需可安全整理；共享的已发布历史按项目合并方式处理。冲突依据双方意图和已确认场景解决，无法决定时保留现场及续接入口。同步、冲突处理及提交整理之后，以最终候选重跑适用检查，记录真实受测版本。无远端、离线、中途交接或项目另有策略时注明实际状态。 [Git 工作方式](.agents/skills/init-stdd/assets/base/docs/stdd/git-workflow.md#收尾同步)
+
+技能提供 Agent 的操作步骤和记录要求。现有 `git_range.py` 只做差异查询；这些步骤不会自动配置 CI 或实现第 7 节的三类门禁。已有 STDD 项目升级时应比对合入技能、Git 约定、工作流和相关模板，初始化器保留同名文件。 [升级说明](.agents/skills/init-stdd/references/usage.md#agent-选项决定技能目录)
 
 可直接把下面的任务发给仓库里的 Codex。
 

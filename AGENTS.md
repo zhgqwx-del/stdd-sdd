@@ -37,6 +37,8 @@
 3. 在 GitHub Releases 发布指向该提交的版本，上传仓库中的同一份 `init-stdd.zip`，并设为 Latest。
 4. 发布后从快速上手的[下载最新版](https://github.com/zhgqwx-del/stdd-sdd/releases/latest/download/init-stdd.zip)链接实际下载，确认获取的是刚发布的附件，并比对下载文件与仓库 ZIP 的 SHA-256。交付时记录版本、提交和下载验证结果。
 
+仅修改 `AGENTS.md` 等仓库维护文档，且改动不影响技能源码或分发包时，提交并推送即可，无需重打包或更新 GitHub Releases。
+
 ## 维护约定
 
 - 文档以中文为主。保持安装命令、参数默认值、流程图和模板之间一致。

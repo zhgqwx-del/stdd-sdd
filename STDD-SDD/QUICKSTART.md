@@ -57,17 +57,63 @@ fi
 
 ## 升级已初始化的项目
 
-把最新版 ZIP 解压到新目录，用里面的脚本运行升级。`stdd_previous_zip` 指向项目上次采用的 ZIP，首次升级时用原初始化包。先看 `UPDATE`、`CREATE` 和 `MERGE` 的差异，再去掉 `--dry-run` 应用。项目定制与上游改动重叠时会标为 `MERGE`，供你手动合并。
+以下命令在 macOS 或 Linux 的同一个终端里分步执行。需要 `curl`、`unzip` 和 Python 3.9 或以上。
+
+### 1. 填目标项目路径，下载并解压新版
+
+把 `stdd_target` 改成**已初始化项目根目录的绝对路径**。如果终端已在该项目根目录，可以用 `stdd_target="$(pwd -P)"`。其余变量会指向这次新建的临时目录。
 
 ```sh
-stdd_target="/path/to/existing-project"
-stdd_script="/path/to/new-bundle/init-stdd/scripts/init_stdd.py"
-stdd_previous_zip="/path/to/previous-release/init-stdd.zip"
+stdd_target="$HOME/projects/my-project"
+stdd_upgrade_dir="$(mktemp -d)"
+stdd_new_zip="$stdd_upgrade_dir/init-stdd-latest.zip"
+stdd_script="$stdd_upgrade_dir/new/init-stdd/scripts/init_stdd.py"
+curl -fL 'https://github.com/zhgqwx-del/stdd-sdd/releases/latest/download/init-stdd.zip' -o "$stdd_new_zip" &&
+  unzip -q "$stdd_new_zip" -d "$stdd_upgrade_dir/new"
+```
+
+### 2. 准备旧版 ZIP，预览差异
+
+把 `stdd_previous_version` 改成**项目上一次实际采用的发布标签**。`v1.3.0` 是示例，首次升级时填当初初始化用的版本。这条命令按标签下载，所以之前在本机删掉旧 ZIP 也可以重新获取。 [GitHub 历史发布](https://github.com/zhgqwx-del/stdd-sdd/releases)
+
+```sh
+stdd_previous_version="v1.3.0"
+stdd_previous_zip="$stdd_upgrade_dir/init-stdd-${stdd_previous_version}.zip"
+curl -fL "https://github.com/zhgqwx-del/stdd-sdd/releases/download/${stdd_previous_version}/init-stdd.zip" -o "$stdd_previous_zip"
+```
+
+如果手头已有正确的旧包，可以跳过上面的下载。把 `stdd_previous_zip` 设成对应 **ZIP 文件的绝对路径**，例如 `stdd_previous_zip="$HOME/Downloads/init-stdd-v1.3.0.zip"`。旧包直接传给 `--from-bundle`，无需解压。
+
+旧包准备好后运行预览。
+
+```sh
 python3 -B "$stdd_script" "$stdd_target" --upgrade --from-bundle "$stdd_previous_zip" --dry-run
+```
+
+`UPDATE` 和 `CREATE` 分别是可自动更新和新增的文件。`MERGE` 表示项目已有定制且上游也有改动，预览会显示上游差异，供你手动合并。自定义技能目录在预览和正式执行时都加上原来的 `--skills-dir` 参数。
+
+### 3. 确认后执行升级
+
+```sh
 python3 -B "$stdd_script" "$stdd_target" --upgrade --from-bundle "$stdd_previous_zip"
 ```
 
-升级后运行项目自己的检查，并在提交或 PR 中记录采用的版本。历史包可从 [GitHub Releases](https://github.com/zhgqwx-del/stdd-sdd/releases) 获取。 [适用范围、定制处理和无旧包时的步骤](.agents/skills/init-stdd/references/usage.md#升级已初始化的项目)
+处理 `MERGE` 项后运行项目原有的检查，并在提交或 PR 中记录本次采用的发布标签。 [升级范围与状态说明](.agents/skills/init-stdd/references/usage.md#升级已初始化的项目)
+
+### 旧包删了，版本也找不到
+
+先查看项目的初始化提交、上次升级 PR 或团队安装记录。能确认发布标签，就按第 2 步下载。仍无法确认版本，或该版本的附件已不可用时，用第 1 步解压的新版生成临时参考项目，再逐项比对和合并。自动升级需要可信的旧包来判断哪些内容是项目定制。
+
+以下以原项目采用 `team` 和 Codex 为例。按实际配置替换 `--profile` 和 `--agent`，并按项目中的技能位置调整对照路径。
+
+```sh
+stdd_reference="$stdd_upgrade_dir/reference"
+python3 -B "$stdd_script" "$stdd_reference" --profile team --agent codex
+git diff --no-index -- "$stdd_target/docs/stdd/templates" "$stdd_reference/docs/stdd/templates"
+git diff --no-index -- "$stdd_target/.agents/skills/stdd-wrap" "$stdd_reference/.agents/skills/stdd-wrap"
+```
+
+`git diff --no-index` 找到差异时会返回状态码 1。根据差异逐项合入需要的模板、技能和相关工作流，再跑项目检查。
 
 ## 初始化后查看七个技能的使用顺序
 

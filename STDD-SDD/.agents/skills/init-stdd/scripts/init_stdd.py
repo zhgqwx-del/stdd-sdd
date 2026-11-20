@@ -3,11 +3,14 @@
 import argparse
 from collections import Counter
 from difflib import unified_diff
+from http.client import HTTPException
+from io import BytesIO
 from pathlib import Path
 import re
 from stat import S_IMODE
 from tempfile import NamedTemporaryFile
-from typing import Optional
+from typing import BinaryIO, Optional, Union
+from urllib.request import urlopen
 from zipfile import BadZipFile, ZipFile
 
 
@@ -16,6 +19,10 @@ ASSETS = SKILL_HOME / "assets"
 STARTER = ASSETS / "starter"
 TOKEN = re.compile(r"\{\{([A-Z_]+)\}\}")
 CHANGE_ID = re.compile(r"[0-9]+-[a-z0-9]+(?:-[a-z0-9]+)*")
+RELEASE_TAG = re.compile(r"v[0-9]+\.[0-9]+\.[0-9]+")
+RELEASE_ZIP = "https://github.com/zhgqwx-del/stdd-sdd/releases/download/{tag}/init-stdd.zip"
+BUNDLE_VERSION = SKILL_HOME / "VERSION"
+PROJECT_VERSION = Path(".stdd-version")
 TEAM_PATHS = ("scripts", ".github/pull_request_template.md")
 TEMPLATES = "docs/stdd/templates"
 WORKFLOW = Path("docs/stdd/workflows.md")
@@ -56,7 +63,7 @@ def bundle_files(root: Path, paths):
             raise FileNotFoundError(path)
 
 
-def skill_directories(agent: str, custom: str) -> tuple[Path, ...]:
+def skill_directories(agent: Optional[str], custom: Optional[str]) -> tuple[Path, ...]:
     if custom is not None:
         parts = custom.split("/")
         if not re.fullmatch(r"[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*", custom) or any(
@@ -166,6 +173,27 @@ def path_status(target: Path, relative: Path, data: bytes) -> str:
     return "CREATE"
 
 
+def initialized_project(target: Path) -> bool:
+    markers = (Path("docs/stdd/project.md"), Path(TEMPLATES) / "spec.md", WORKFLOW)
+    return any(not path_blocked(target, path) and (target / path).is_file() for path in markers)
+
+
+def release_tag(value: str) -> str:
+    tag = value.strip()
+    if not RELEASE_TAG.fullmatch(tag):
+        raise ValueError("Expected a release tag in the form vX.Y.Z")
+    return tag
+
+
+def project_version_bytes(target: Path) -> Optional[bytes]:
+    if path_blocked(target, PROJECT_VERSION):
+        raise ValueError(f"Blocked version record: {target / PROJECT_VERSION}")
+    try:
+        return (target / PROJECT_VERSION).read_bytes()
+    except FileNotFoundError:
+        return None
+
+
 def create_file(path: Path, data: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     created = False
@@ -193,10 +221,14 @@ def managed_asset(path: Path) -> bool:
     return False
 
 
-def load_baseline(bundle: Path) -> dict[Path, bytes]:
+def load_baseline(bundle: Union[Path, BinaryIO], expected_tag: Optional[str] = None) -> dict[Path, bytes]:
     assets = {}
     prefix = "init-stdd/assets/"
     with ZipFile(bundle) as archive:
+        if expected_tag and "init-stdd/VERSION" in archive.namelist():
+            actual_tag = release_tag(archive.read("init-stdd/VERSION").decode("ascii"))
+            if actual_tag != expected_tag:
+                raise ValueError(f"Baseline ZIP declares {actual_tag}, expected {expected_tag}")
         for entry in archive.infolist():
             if entry.is_dir() or not entry.filename.startswith(prefix):
                 continue
@@ -213,11 +245,32 @@ def load_baseline(bundle: Path) -> dict[Path, bytes]:
     return assets
 
 
+def download_baseline(tag: str) -> dict[Path, bytes]:
+    print(f"Downloading baseline ZIP for {tag}")
+    try:
+        with urlopen(RELEASE_ZIP.format(tag=tag), timeout=30) as response:
+            bundle = BytesIO(response.read())
+    except (OSError, HTTPException) as error:
+        raise ValueError(
+            f"Could not download baseline for {tag}. Use --from-bundle with the matching ZIP. {error}"
+        ) from error
+    return load_baseline(bundle, expected_tag=tag)
+
+
 def installed_directories(target: Path, assets: dict[Path, bytes]) -> tuple[Path, ...]:
     source = Path("starter") / SKILL_SOURCE
     skills = {Path(path.relative_to(source).parts[0]) for path in assets if source in path.parents}
     roots = (*AGENT_PATHS.values(), PORTABLE_PATH)
-    return tuple(root for root in roots if any(
+    workflow = target / WORKFLOW
+    if not path_blocked(target, WORKFLOW) and workflow.is_file():
+        text = workflow.read_text(encoding="utf-8", errors="replace")
+        link = re.search(r"\]\(\.\./\.\./([A-Za-z0-9_./-]+)/stdd-start/SKILL\.md\)", text)
+        if link:
+            try:
+                roots = (*roots, *skill_directories(None, link[1]))
+            except ValueError:
+                pass
+    return tuple(root for root in dict.fromkeys(roots) if any(
         not path_blocked(target, root / skill / "SKILL.md") and (target / root / skill).is_dir()
         for skill in skills
     ))
@@ -287,6 +340,18 @@ def apply_upgrade(target: Path, path: Path, before: Optional[bytes], after: byte
     return "UPDATED"
 
 
+def save_project_version(target: Path, previous: Optional[bytes], tag: str, dry_run: bool) -> None:
+    data = (tag + "\n").encode("ascii")
+    status = upgrade_status(target, PROJECT_VERSION, previous, data)
+    if status == "UNCHANGED":
+        return
+    if status not in ("CREATE", "UPDATE"):
+        raise ValueError(f"{PROJECT_VERSION} changed or is blocked. Preview again.")
+    if not dry_run and apply_upgrade(target, PROJECT_VERSION, previous, data, status) == "CHANGED":
+        raise ValueError(f"{PROJECT_VERSION} changed during the run. Preview again.")
+    print(f"{'RECORD' if dry_run else 'RECORDED':9} {PROJECT_VERSION} ({tag})")
+
+
 def print_upgrade_diff(path: Path, before: Optional[bytes], after: bytes) -> None:
     old_lines = (before or b"").decode("utf-8", errors="replace").splitlines(keepends=True)
     new_lines = (after or b"").decode("utf-8", errors="replace").splitlines(keepends=True)
@@ -296,21 +361,29 @@ def print_upgrade_diff(path: Path, before: Optional[bytes], after: bytes) -> Non
         print("(File bytes differ in encoding.)")
 
 
-def upgrade_project(args, target: Path) -> None:
+def upgrade_project(args, target: Path, tag: str) -> None:
     if not target.is_dir():
         raise ValueError("Upgrade target must be an initialized project directory")
-    old_assets = load_baseline(Path(args.from_bundle).expanduser())
+    previous = project_version_bytes(target)
     new_assets = {
         path.relative_to(ASSETS): path.read_bytes()
         for path in bundle_files(ASSETS, (".",))
         if managed_asset(path.relative_to(ASSETS))
     }
+    if args.from_bundle:
+        old_assets = load_baseline(Path(args.from_bundle).expanduser())
+    elif previous is None:
+        raise ValueError(f"No {PROJECT_VERSION} found. Use --record-version TAG or --from-bundle ZIP.")
+    else:
+        old_tag = release_tag(previous.decode("ascii"))
+        old_assets = new_assets if old_tag == tag else download_baseline(old_tag)
+    installed = installed_directories(target, {**old_assets, **new_assets})
     if args.profile == "spec":
         directories = ()
     elif args.agent or args.skills_dir:
         directories = skill_directories(args.agent, args.skills_dir)
     else:
-        directories = installed_directories(target, {**old_assets, **new_assets})
+        directories = installed
     before = upgrade_files(old_assets, directories)
     after = upgrade_files(new_assets, directories)
     paths = sorted(before.keys() | after.keys())
@@ -335,6 +408,12 @@ def upgrade_project(args, target: Path) -> None:
         print("MERGE files were kept. Apply the upstream changes manually.")
     if counts["CHANGED"]:
         print("CHANGED files were skipped because they changed during the run. Preview again.")
+    if set(installed).difference(directories) or (not directories and (target / WORKFLOW).exists()):
+        print("Version record kept because the upgrade covered only part of the installed scaffold.")
+    elif any(counts[status] for status in ("MERGE", "BLOCKED", "CHANGED")):
+        print("Version record kept. After resolving outstanding items, rerun or use --record-version TAG to confirm.")
+    else:
+        save_project_version(target, previous, tag, args.dry_run)
 
 
 def main() -> None:
@@ -350,20 +429,31 @@ def main() -> None:
     destination.add_argument("--skills-dir", help="Custom skill directory relative to the project root")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--skills-only", action="store_true", help="Add skill directories to an initialized project")
-    mode.add_argument("--upgrade", action="store_true", help="Upgrade using a previous distribution ZIP as baseline")
-    parser.add_argument("--from-bundle", metavar="ZIP", help="init-stdd.zip most recently adopted by the project")
+    mode.add_argument("--upgrade", action="store_true", help="Upgrade from the recorded project version")
+    mode.add_argument("--record-version", metavar="TAG", help="Record a confirmed release tag for an initialized project")
+    parser.add_argument("--from-bundle", metavar="ZIP", help="Use a local baseline ZIP for --upgrade")
     parser.add_argument("--change-id", default="001-first-slice")
     parser.add_argument("--change-title", default="首个可验收切片")
     parser.add_argument("--design", action="store_true", help="Include a technical design document for the first change")
     parser.add_argument("--dry-run", action="store_true", help="Print the file plan without writing")
     args = parser.parse_args()
 
-    if args.upgrade != (args.from_bundle is not None):
-        parser.error("--upgrade and --from-bundle ZIP must be used together")
+    if args.from_bundle is not None and not args.upgrade:
+        parser.error("--from-bundle requires --upgrade")
     target = Path(args.target).expanduser().resolve()
+    if args.record_version is not None:
+        try:
+            tag = release_tag(args.record_version)
+            if not initialized_project(target):
+                raise ValueError("Version recording requires an initialized STDD project")
+            save_project_version(target, project_version_bytes(target), tag, args.dry_run)
+        except (OSError, ValueError) as error:
+            parser.exit(1, f"Version recording failed: {error}\n")
+        return
     if args.upgrade:
         try:
-            upgrade_project(args, target)
+            tag = release_tag(BUNDLE_VERSION.read_text(encoding="ascii"))
+            upgrade_project(args, target, tag)
         except (OSError, ValueError, BadZipFile, RuntimeError, KeyError) as error:
             parser.exit(1, f"Upgrade failed: {error}\n")
         return
@@ -378,6 +468,12 @@ def main() -> None:
         parser.error("change ID is already archived; choose --change-id for a new slice")
 
     try:
+        record = target / PROJECT_VERSION
+        record_blocked = not args.skills_only and path_blocked(target, PROJECT_VERSION)
+        should_record = not args.skills_only and not record_blocked and not record.exists()
+        is_new = should_record and not initialized_project(target)
+        if is_new:
+            tag = release_tag(BUNDLE_VERSION.read_text(encoding="ascii"))
         directories = skill_directories(args.agent, args.skills_dir)
         files = bundled_skills(directories) if args.skills_only else build_plan(args, target, directories)
         if AGENT_PATHS["claude"] in directories and (Path("AGENTS.md") in files or (target / "AGENTS.md").is_file()):
@@ -401,6 +497,12 @@ def main() -> None:
             counts[status] += 1
             print(f"{status:9} {path.as_posix()}")
         print(", ".join(f"{count} {status.lower()}" for status, count in sorted(counts.items())))
+        if is_new and not counts["BLOCKED"]:
+            save_project_version(target, None, tag, args.dry_run)
+        elif record_blocked:
+            print(f"BLOCKED   {PROJECT_VERSION}")
+        elif should_record:
+            print(f"No {PROJECT_VERSION} written. Use --record-version TAG once the baseline is confirmed.")
     except (OSError, ValueError, UnicodeError) as error:
         parser.exit(1, f"Initialization failed: {error}\n")
 

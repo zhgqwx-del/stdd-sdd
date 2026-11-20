@@ -24,6 +24,8 @@ python3 -B "$stdd_script" "$stdd_target"
 
 默认 `team` + `all` 会把项目文档、变更模板、三个脚本、PR 模板和三个工具的七个研发技能放入目标项目。`init-stdd` 留在解压目录，可复用。脚本生成协作骨架和变更草稿。准备开始首个需求时，用 `stdd-start` 核对现有行为、记录接入基线，并完善生成的首个变更草稿。 [已有项目接入流程](existing-project.md)
 
+首次初始化成功后，脚本把包的发布标签写入项目根目录的 `.stdd-version`。将这个文件随项目提交，团队成员可用同一个版本作为升级基准。
+
 ## 方式二：在项目里安装并调用技能
 
 如果希望 Agent 根据目标起草规格和验收，可以将完整的 `init-stdd/` 解压到目标项目的技能目录。在目标项目根目录执行以下命令。Codex 用 `.agents/skills`，Claude Code 换成 `.claude/skills`，Qoder 换成 `.qoder/skills`。已经解压到该目录的项目可以直接调用。
@@ -186,17 +188,18 @@ python3 -B scripts/init_stdd.py /path/to/existing-repo --skills-only --agent all
 
 ## 升级已初始化的项目
 
-准备两份分发包。将新版本解压到项目外，用新包里的脚本运行升级。`--from-bundle` 指向项目上一次实际采用的版本的 ZIP，首次升级时就是初始化用的 ZIP。可在[历史 Releases](https://github.com/zhgqwx-del/stdd-sdd/releases)下载对应版本。先预览，再执行同一命令。
+新版本解压到项目外，从新包运行升级。脚本读取项目根目录的 `.stdd-version`，从 GitHub 下载该发布标签的 ZIP 用于比对。上次采用的版本和当前包相同时，脚本直接用当前包作基准。先预览，再执行同一命令。
 
 ```sh
 stdd_target="/path/to/existing-project"
 stdd_script="/path/to/new-bundle/init-stdd/scripts/init_stdd.py"
-stdd_previous_zip="/path/to/previous-release/init-stdd.zip"
-python3 -B "$stdd_script" "$stdd_target" --upgrade --from-bundle "$stdd_previous_zip" --dry-run
-python3 -B "$stdd_script" "$stdd_target" --upgrade --from-bundle "$stdd_previous_zip"
+python3 -B "$stdd_script" "$stdd_target" --upgrade --dry-run
+python3 -B "$stdd_script" "$stdd_target" --upgrade
 ```
 
-升级默认识别项目内的 Codex、Claude Code、Qoder 和便携技能目录。可以用 `--agent codex` 等选项指定范围，自定义布局传原来的 `--skills-dir`。仅升级共用文档和模板时传 `--profile spec`。升级范围包括共用工程约定、`docs/stdd/templates/`、已选目录的研发技能及其配套工作流、脚本和 PR 模板。业务规格、在途变更和历史验收证据继续由项目维护。
+旧项目可以用 `python3 -B "$stdd_script" "$stdd_target" --record-version v1.4.0` 补录。把示例标签换成已确认的实际版本。重复运行普通初始化或 `--skills-only` 时，升级基准仍由项目的版本记录决定。已有旧 ZIP 时，可用 `--upgrade --from-bundle /path/to/previous/init-stdd.zip` 指定本地包，优先级高于版本记录。 [历史发布](https://github.com/zhgqwx-del/stdd-sdd/releases)
+
+升级默认识别项目内的 Codex、Claude Code、Qoder、便携技能目录，以及工作流中链接的自定义目录。可以用 `--agent codex` 等选项指定范围，自定义布局也可显式传原来的 `--skills-dir`。仅升级共用文档和模板时传 `--profile spec`。升级范围包括共用工程约定、`docs/stdd/templates/`、已选目录的研发技能及其配套工作流、脚本和 PR 模板。业务规格、在途变更和历史验收证据继续由项目维护。
 
 | 状态 | 含义 |
 | --- | --- |
@@ -208,4 +211,4 @@ python3 -B "$stdd_script" "$stdd_target" --upgrade --from-bundle "$stdd_previous
 | `MISSING` / `RETIRED` | 项目已移除旧文件，或新版退役了项目仍保留的文件，按需复核 |
 | `BLOCKED` / `CHANGED` | 路径受阻，或执行时发现项目内容有变动，处理后重新预览 |
 
-预览显示 `UPDATE`、`CREATE`、`MERGE` 的上游文本差异。合并后运行项目原有的构建和检查，在提交或 PR 中记录采用的版本，便于下次选对基线。若找不到可信的旧包，用新版在临时目录生成同配置的参考项目，再按项目文件逐项比对和合并。
+预览显示 `UPDATE`、`CREATE`、`MERGE` 的上游文本差异。完整升级成功后，脚本把新版标签写入 `.stdd-version`。如果存在待合并、受阻或执行中变化的路径，或升级范围排除了已安装的技能目录，脚本会保留原有基准。处理完差异后可重新运行升级，或运行项目检查后用 `--record-version` 确认实际采用的新版标签。若找不到可信的旧包，用新版在临时目录生成同配置的参考项目，逐项合并并确认采用的版本。

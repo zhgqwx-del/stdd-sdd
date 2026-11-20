@@ -16,6 +16,7 @@
 
 | 位置（相对技能目录） | 职责 |
 | --- | --- |
+| `VERSION` | 当前分发包的发布标签，须与 GitHub Release 标签一致 |
 | `scripts/init_stdd.py` | 解析参数、渲染模板、规划初始化或升级文件 |
 | `assets/base/` | 各配置共用的项目入口和工程约定，包含 `{{TOKEN}}` 占位符 |
 | `assets/seed/` | 首个变更的 `change.md` 和 `spec.md` 草稿 |
@@ -24,7 +25,7 @@
 | `references/` | 使用说明、已有项目接入及角色交接 |
 
 - 三种配置为 `spec`、`team`、`demo`，默认 `team`；技能目录默认 `all`，另支持单工具、自动识别、便携目录及自定义目录。
-- 常规初始化和 `--skills-only` 只新增缺失文件，保留已有同名文件。显式传入 `--upgrade --from-bundle <旧版 ZIP>` 时，按旧包基准更新脚手架文件，保留并报告需要手工合并的文件。`--dry-run` 只预览。保持 `CREATE`、`KEEP`、`UNCHANGED`、`BLOCKED` 的语义。
+- 常规初始化和 `--skills-only` 只新增缺失文件，保留已有同名文件。`--upgrade` 按项目根目录的 `.stdd-version` 获取旧包，也可用 `--from-bundle` 指定本地旧包。首次初始化或完整升级后记录采用的版本，旧项目可用 `--record-version` 补录。`--dry-run` 只预览。保持 `CREATE`、`KEEP`、`UNCHANGED`、`BLOCKED` 的语义。
 - `assets/starter/` 中的运费基线为 99 元，`stdd-use-demo/` 是已完成 129 元变更的演练。同步通用技能、模板和脚本时核对两处；保留教学前后版本的预期差异。
 - `STDD-SDD/init-stdd.zip` 分发完整的 `init-stdd/` 目录，按下方流程维护。
 
@@ -33,7 +34,7 @@
 每次更新 `init-stdd` 或其分发的 `stdd-*` 技能，按以下顺序完成交付。
 
 1. 同步[实践手册](<STDD-SDD/STDD 与 SDD 实践手册.md>)和[技能源码](STDD-SDD/.agents/skills/init-stdd/)，核对技能行为、使用步骤和示例是否一致。涉及的快速上手、使用说明、生成模板和演练副本一并更新。
-2. 从技能源码重新构建 [init-stdd.zip](STDD-SDD/init-stdd.zip)，核对文件清单及逐文件内容，解压后验证受影响的初始化配置。通过后提交并推送这批更新。
+2. 将技能源码的 `VERSION` 更新为本次发布标签，再重新构建 [init-stdd.zip](STDD-SDD/init-stdd.zip)。核对文件清单及逐文件内容，解压后验证受影响的初始化配置。通过后提交并推送这批更新。
 3. 在 GitHub Releases 发布指向该提交的版本，上传仓库中的同一份 `init-stdd.zip`，并设为 Latest。
 4. 发布后从快速上手的[下载最新版](https://github.com/zhgqwx-del/stdd-sdd/releases/latest/download/init-stdd.zip)链接实际下载，确认获取的是刚发布的附件，并比对下载文件与仓库 ZIP 的 SHA-256。交付时记录版本、提交和下载验证结果。
 

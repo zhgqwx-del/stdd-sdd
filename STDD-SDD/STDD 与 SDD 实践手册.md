@@ -261,7 +261,7 @@ project/
 
 默认收尾先刷新真实目标并固定 SHA，再根据提交关系跳过、快进或 rebase。工作区需可安全整理；共享的已发布历史按项目合并方式处理。冲突依据双方意图和已确认场景解决，无法决定时保留现场及续接入口。同步、冲突处理及提交整理之后，以最终候选重跑适用检查，记录真实受测版本。无远端、离线、中途交接或项目另有策略时注明实际状态。 [Git 工作方式](.agents/skills/init-stdd/assets/base/docs/stdd/git-workflow.md#收尾同步)
 
-技能提供 Agent 的操作步骤和记录要求。现有 `git_range.py` 只做差异查询；这些步骤不会自动配置 CI 或实现第 7 节的三类门禁。已有 STDD 项目可用新版初始化器的 `--upgrade --from-bundle <旧版 ZIP> --dry-run` 预览。执行升级时，新版会更新仍与旧包一致的项目文件。项目和新版均有改动的文件会标为 `MERGE`，团队可结合上游差异合并后运行原有检查。 [升级说明](.agents/skills/init-stdd/references/usage.md#升级已初始化的项目)
+技能提供 Agent 的操作步骤和记录要求。现有 `git_range.py` 提供差异查询。项目检查、验收证据和 ZIP 发布门禁见第 7 节。初始化或完整升级后，初始化器把采用的版本写入项目根目录的 `.stdd-version`。后续用新版脚本的 `--upgrade --dry-run`，按记录的发布标签获取旧包并预览差异。旧项目确认实际采用的版本后可以用 `--record-version` 补录，手头有旧包时可用 `--from-bundle`。项目和新版均有改动的文件会标为 `MERGE`，团队可结合上游差异合并后运行原有检查。 [升级说明](.agents/skills/init-stdd/references/usage.md#升级已初始化的项目)
 
 可直接把下面的任务发给仓库里的 Codex。
 

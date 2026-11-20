@@ -1,9 +1,13 @@
+from contextlib import redirect_stderr, redirect_stdout
+from importlib.util import module_from_spec, spec_from_file_location
+from io import BytesIO, StringIO
 import shutil
 from pathlib import Path
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
 import unittest
+from unittest.mock import patch
 from zipfile import ZipFile
 
 
@@ -11,6 +15,7 @@ SOURCE = Path(__file__).resolve().parents[1] / "STDD-SDD/.agents/skills/init-std
 STARTER = Path("assets/starter")
 TEMPLATES = Path("docs/stdd/templates")
 SKILLS = Path(".agents/skills")
+PREVIOUS_RELEASE = "v1.4.0"
 
 
 class UpgradeTest(unittest.TestCase):
@@ -26,6 +31,8 @@ class UpgradeTest(unittest.TestCase):
                 if path.is_file():
                     archive.write(path, path.relative_to(self.root).as_posix())
         self.project = self.root / "project"
+        self.version_file = self.project / ".stdd-version"
+        self.tag = (self.bundle / "VERSION").read_text(encoding="ascii").strip()
 
     def run_cli(self, *args, check=True):
         return subprocess.run(
@@ -42,6 +49,7 @@ class UpgradeTest(unittest.TestCase):
 
     def test_preview_and_apply_with_local_changes_and_deleted_files(self):
         self.run_cli("--agent", "codex")
+        self.run_cli("--record-version", PREVIOUS_RELEASE)
         stock_skill = SKILLS / "stdd-wrap/SKILL.md"
         custom_skill = SKILLS / "stdd-start/SKILL.md"
         modified_template = TEMPLATES / "verification.md"
@@ -88,6 +96,10 @@ class UpgradeTest(unittest.TestCase):
         self.assertFalse((self.project / ".claude").exists())
         self.assertFalse((self.project / ".qoder").exists())
         self.assertNotIn("UPDATED", self.upgrade())
+        self.assertEqual(self.version_file.read_text(encoding="ascii").strip(), PREVIOUS_RELEASE)
+        (self.project / custom_skill).write_bytes(b"New upstream version\n")
+        self.assertIn("RECORDED", self.upgrade())
+        self.assertEqual(self.version_file.read_text(encoding="ascii").strip(), self.tag)
 
     def test_custom_skill_layout_and_symlink(self):
         root = Path(".custom/skills")
@@ -95,7 +107,7 @@ class UpgradeTest(unittest.TestCase):
         stock_skill = SKILLS / "stdd-wrap/SKILL.md"
         target = self.project / root / stock_skill.relative_to(SKILLS)
         self.set_new_asset(stock_skill, b"New upstream version\n")
-        self.assertNotIn(target.relative_to(self.project).as_posix(), self.upgrade("--dry-run"))
+        self.assertIn(f"UPDATE    {target.relative_to(self.project).as_posix()}", self.upgrade("--dry-run"))
         self.assertIn(f"UPDATE    {target.relative_to(self.project).as_posix()}",
                       self.upgrade("--skills-dir", root.as_posix(), "--dry-run"))
 
@@ -122,6 +134,78 @@ class UpgradeTest(unittest.TestCase):
         self.assertEqual((self.project / template).read_bytes(), original)
         self.assertIn(f"UPDATED   {template.as_posix()}", self.upgrade("--profile", "spec"))
         self.assertFalse((self.project / SKILLS).exists())
+
+    def test_fresh_initialization_and_manual_recording_for_legacy_project(self):
+        self.assertIn("RECORD    .stdd-version", self.run_cli("--dry-run").stdout)
+        self.assertFalse(self.project.exists())
+        self.run_cli()
+        self.assertEqual(self.version_file.read_text(encoding="ascii").strip(), self.tag)
+
+        self.version_file.unlink()
+        self.run_cli()
+        self.run_cli("--skills-only")
+        self.assertFalse(self.version_file.exists())
+        missing = self.run_cli("--upgrade", "--dry-run", check=False)
+        self.assertIn("--record-version TAG", missing.stderr)
+        invalid = self.run_cli("--record-version", "../v1.4.0", check=False)
+        self.assertNotEqual(invalid.returncode, 0)
+        self.run_cli("--record-version", PREVIOUS_RELEASE, "--dry-run")
+        self.assertFalse(self.version_file.exists())
+        self.run_cli("--record-version", PREVIOUS_RELEASE)
+        self.run_cli()
+        self.assertEqual(self.version_file.read_text(encoding="ascii").strip(), PREVIOUS_RELEASE)
+
+    def test_upgrade_downloads_the_recorded_release_and_advances_after_apply(self):
+        self.run_cli("--agent", "codex")
+        self.run_cli("--record-version", PREVIOUS_RELEASE)
+        template = TEMPLATES / "verification.md"
+        self.set_new_asset(template, b"New upstream version\n")
+        script = self.bundle / "scripts/init_stdd.py"
+        spec = spec_from_file_location("isolated_init_stdd", script)
+        initializer = module_from_spec(spec)
+        spec.loader.exec_module(initializer)
+
+        url = f"https://github.com/zhgqwx-del/stdd-sdd/releases/download/{PREVIOUS_RELEASE}/init-stdd.zip"
+        argv = [str(script), str(self.project), "--upgrade"]
+        mismatched_bundle = BytesIO(self.baseline.read_bytes())
+        with ZipFile(mismatched_bundle, "a") as archive:
+            archive.writestr("init-stdd/VERSION", self.tag + "\n")
+        mismatched_bundle.seek(0)
+        error = StringIO()
+        with patch.object(initializer, "urlopen", return_value=mismatched_bundle):
+            with patch.object(sys, "argv", argv), redirect_stdout(StringIO()), redirect_stderr(error):
+                with self.assertRaises(SystemExit) as exit_status:
+                    initializer.main()
+        self.assertEqual(exit_status.exception.code, 1)
+        self.assertIn(f"expected {PREVIOUS_RELEASE}", error.getvalue())
+        self.assertEqual(self.version_file.read_text(encoding="ascii").strip(), PREVIOUS_RELEASE)
+        self.assertNotEqual((self.project / template).read_bytes(), b"New upstream version\n")
+
+        for args in (["--dry-run"], []):
+            output = StringIO()
+            with patch.object(initializer, "urlopen", return_value=BytesIO(self.baseline.read_bytes())) as download:
+                with patch.object(sys, "argv", [*argv, *args]), redirect_stdout(output):
+                    initializer.main()
+            download.assert_called_once_with(url, timeout=30)
+            state = "UPDATE    " if args else "UPDATED   "
+            self.assertIn(state + template.as_posix(), output.getvalue())
+            self.assertEqual(self.version_file.read_text(encoding="ascii").strip(),
+                             PREVIOUS_RELEASE if args else self.tag)
+
+        with patch.object(initializer, "urlopen") as download:
+            with patch.object(sys, "argv", argv), redirect_stdout(StringIO()):
+                initializer.main()
+        download.assert_not_called()
+
+    def test_subset_upgrade_keeps_previous_release(self):
+        self.run_cli()
+        self.run_cli("--record-version", PREVIOUS_RELEASE)
+        self.set_new_asset(SKILLS / "stdd-start/SKILL.md", b"New upstream version\n")
+        result = self.upgrade("--agent", "codex")
+        self.assertIn("only part of the installed scaffold", result)
+        self.assertEqual(self.version_file.read_text(encoding="ascii").strip(), PREVIOUS_RELEASE)
+        self.assertIn("UPDATED   .claude/skills/stdd-start/SKILL.md", self.upgrade())
+        self.assertEqual(self.version_file.read_text(encoding="ascii").strip(), self.tag)
 
 
 if __name__ == "__main__":

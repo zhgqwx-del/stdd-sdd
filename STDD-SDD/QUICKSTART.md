@@ -55,12 +55,26 @@ fi
 
 只移动 `init-stdd/` 整个目录。项目里的七个 `stdd-*` 技能、文档、变更目录、脚本和 PR 模板继续保留。 [多工具与已有项目接入说明](.agents/skills/init-stdd/references/usage.md)
 
+## 升级已初始化的项目
+
+把最新版 ZIP 解压到新目录，用里面的脚本运行升级。`stdd_previous_zip` 指向项目上次采用的 ZIP，首次升级时用原初始化包。先看 `UPDATE`、`CREATE` 和 `MERGE` 的差异，再去掉 `--dry-run` 应用。项目定制与上游改动重叠时会标为 `MERGE`，供你手动合并。
+
+```sh
+stdd_target="/path/to/existing-project"
+stdd_script="/path/to/new-bundle/init-stdd/scripts/init_stdd.py"
+stdd_previous_zip="/path/to/previous-release/init-stdd.zip"
+python3 -B "$stdd_script" "$stdd_target" --upgrade --from-bundle "$stdd_previous_zip" --dry-run
+python3 -B "$stdd_script" "$stdd_target" --upgrade --from-bundle "$stdd_previous_zip"
+```
+
+升级后运行项目自己的检查，并在提交或 PR 中记录采用的版本。历史包可从 [GitHub Releases](https://github.com/zhgqwx-del/stdd-sdd/releases) 获取。 [适用范围、定制处理和无旧包时的步骤](.agents/skills/init-stdd/references/usage.md#升级已初始化的项目)
+
 ## 初始化后查看七个技能的使用顺序
 
 初始化后先打开项目的 **`docs/stdd/project.md`**，找到当前变更和四角色入口。然后打开 **`docs/stdd/workflows.md` →「使用顺序」**，查看七个研发技能的流程图和适用场景。 [查看演练项目里的工作流示例](../stdd-use-demo/docs/stdd/workflows.md#使用顺序)
 
 确认规格、验收和实施方案后，用 `stdd-delivery` 先写验收测试，再实现。后续开新需求时用 `stdd-start`。
 
-准备提交或 PR 时，用 `stdd-wrap` 刷新真实合入目标，按项目策略快进或 rebase，处理冲突后复跑检查并记录受测版本。共享历史、脏工作区、离线或中途交接按项目约定处理。已有项目升级时，在临时目录生成新版再比对合入技能、Git 约定和模板；初始化器保留同名文件，重跑不会自动替换旧技能。 [详细说明](.agents/skills/init-stdd/references/usage.md#方案和-git-工作方式)
+准备提交或 PR 时，用 `stdd-wrap` 刷新真实合入目标，按项目策略快进或 rebase，处理冲突后复跑检查并记录受测版本。共享历史、脏工作区、离线或中途交接按项目约定处理。 [详细说明](.agents/skills/init-stdd/references/usage.md#方案和-git-工作方式)
 
 项目按自己的测试、联调和交付流程执行验收。项目检查、验收证据和 ZIP 发布三道门禁暂列后续待办。 [待办与当前做法](<STDD 与 SDD 实践手册.md#7-后续待完善的测试与门禁>)

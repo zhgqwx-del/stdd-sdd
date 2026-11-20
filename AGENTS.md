@@ -16,7 +16,7 @@
 
 | 位置（相对技能目录） | 职责 |
 | --- | --- |
-| `scripts/init_stdd.py` | 解析参数、渲染模板、规划并新增文件 |
+| `scripts/init_stdd.py` | 解析参数、渲染模板、规划初始化或升级文件 |
 | `assets/base/` | 各配置共用的项目入口和工程约定，包含 `{{TOKEN}}` 占位符 |
 | `assets/seed/` | 首个变更的 `change.md` 和 `spec.md` 草稿 |
 | `assets/starter/` | 文档模板、七个研发技能、三个辅助脚本，以及教学代码、测试和 CI |
@@ -24,7 +24,7 @@
 | `references/` | 使用说明、已有项目接入及角色交接 |
 
 - 三种配置为 `spec`、`team`、`demo`，默认 `team`；技能目录默认 `all`，另支持单工具、自动识别、便携目录及自定义目录。
-- 初始化器只新增缺失文件，保留已有同名文件；`--dry-run` 只预览，`--skills-only` 补技能。保持 `CREATE`、`KEEP`、`UNCHANGED`、`BLOCKED` 的语义。
+- 常规初始化和 `--skills-only` 只新增缺失文件，保留已有同名文件。显式传入 `--upgrade --from-bundle <旧版 ZIP>` 时，按旧包基准更新脚手架文件，保留并报告需要手工合并的文件。`--dry-run` 只预览。保持 `CREATE`、`KEEP`、`UNCHANGED`、`BLOCKED` 的语义。
 - `assets/starter/` 中的运费基线为 99 元，`stdd-use-demo/` 是已完成 129 元变更的演练。同步通用技能、模板和脚本时核对两处；保留教学前后版本的预期差异。
 - `STDD-SDD/init-stdd.zip` 分发完整的 `init-stdd/` 目录，按下方流程维护。
 
@@ -62,6 +62,7 @@ python3 -B STDD-SDD/.agents/skills/init-stdd/scripts/init_stdd.py --help
 
 - 演练规则或用例变动：运行定向验收和 `make check`，同步相关规格与记录。
 - 初始化器或资源变动：在临时目录生成受影响配置；影响公共生成逻辑时覆盖三种配置，核对入口、技能目录及已有文件保留。生成的 `demo` 再运行 `make check`。
+- 升级逻辑变动：运行 `python3 -B -m unittest discover -s tests -v`，并用历史 ZIP 核对升级预览和实际结果。
 - 分发包变动：核对 ZIP 文件清单及逐文件内容与技能源码一致。
 - 本仓库根目录尚无统一检查或发布流水线；子目录里的 `.github/workflows/check.yml` 用于教学项目，不能作为本仓库根级 CI 已通过的证据。
 

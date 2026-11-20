@@ -173,7 +173,7 @@ python3 -B -m unittest discover -s tests -t . -v
 
 其他支持 `SKILL.md` 的工具可传宿主规定的项目相对目录，例如 `--skills-dir .my-agent/skills`。如果工具没有技能发现功能，用 `--agent portable`，从 `docs/stdd/workflows.md` 找到文件，明确让它读取相应 `SKILL.md` 并按步骤执行。它需要能访问项目文件，执行脚本时还需要终端权限。各工具的技能扫描方式由其产品支持决定。
 
-已经用旧版本初始化的项目，可以用更新后的分发包补齐后续技能。以下命令可补齐混用团队的技能目录，也可把 `all` 换成某个工具。
+已初始化的项目若要补装缺失技能或接入新的 Agent，可以用 `--skills-only`。以下命令可补齐混用团队的技能目录，也可把 `all` 换成某个工具。
 
 ```sh
 python3 -B scripts/init_stdd.py /path/to/existing-repo --skills-only --agent all --dry-run
@@ -182,6 +182,30 @@ python3 -B scripts/init_stdd.py /path/to/existing-repo --skills-only --agent all
 
 `team` 或 `demo` 项目后续可用 `stdd-start`，也可运行 `python3 -B scripts/new_change.py 002-next-change "下一项变更" --roles` 为下一项变更生成四角色文档。需要单独的技术设计时叠加 `--design`。现行规格检查覆盖 `specs/` 中已交付的行为，草稿在变更评审时核对。
 
-升级已有 STDD 项目时，先更新 `init-stdd` 技能包，再在临时目录生成新版项目作比对，按需合入七个研发技能、Git 约定、工作流、变更和验收等模板及 PR 模板。此次收尾同步增强涉及这些现有文件；初始化器和 `--skills-only` 都会保留内容不同的同名文件，重跑不会自动覆盖为新版。合入时保留项目自己的分支、测试及发布规则。
-
 生成器会将目标中不同内容的同名文件标为 `KEEP`，内容相同标为 `UNCHANGED`，无法作为目录使用的路径标为 `BLOCKED`。重跑可补缺失项。目标子路径上的符号链接会保留并跳过。已有 `AGENTS.md` 或 README 时，可以根据现行写法增加指向 `docs/stdd/project.md` 的入口。`spec` 和 `team` 可以接入已有项目，应用代码、测试和交付命令沿用当前仓库。
+
+## 升级已初始化的项目
+
+准备两份分发包。将新版本解压到项目外，用新包里的脚本运行升级。`--from-bundle` 指向项目上一次实际采用的版本的 ZIP，首次升级时就是初始化用的 ZIP。可在[历史 Releases](https://github.com/zhgqwx-del/stdd-sdd/releases)下载对应版本。先预览，再执行同一命令。
+
+```sh
+stdd_target="/path/to/existing-project"
+stdd_script="/path/to/new-bundle/init-stdd/scripts/init_stdd.py"
+stdd_previous_zip="/path/to/previous-release/init-stdd.zip"
+python3 -B "$stdd_script" "$stdd_target" --upgrade --from-bundle "$stdd_previous_zip" --dry-run
+python3 -B "$stdd_script" "$stdd_target" --upgrade --from-bundle "$stdd_previous_zip"
+```
+
+升级默认识别项目内的 Codex、Claude Code、Qoder 和便携技能目录。可以用 `--agent codex` 等选项指定范围，自定义布局传原来的 `--skills-dir`。仅升级共用文档和模板时传 `--profile spec`。升级范围包括共用工程约定、`docs/stdd/templates/`、已选目录的研发技能及其配套工作流、脚本和 PR 模板。业务规格、在途变更和历史验收证据继续由项目维护。
+
+| 状态 | 含义 |
+| --- | --- |
+| `UPDATE` | 项目文件和旧包生成内容逐字节一致，新版有变动，执行时更新 |
+| `CREATE` | 新版新增的文件在项目中也缺失，执行时新增 |
+| `MERGE` | 新版有变动，项目已有另一份内容，依据预览里的旧版到新版差异手动合并 |
+| `KEEP` | 项目有定制，该文件的上游内容相同 |
+| `UNCHANGED` | 项目文件已与新版一致，或上游和项目均已移除 |
+| `MISSING` / `RETIRED` | 项目已移除旧文件，或新版退役了项目仍保留的文件，按需复核 |
+| `BLOCKED` / `CHANGED` | 路径受阻，或执行时发现项目内容有变动，处理后重新预览 |
+
+预览显示 `UPDATE`、`CREATE`、`MERGE` 的上游文本差异。合并后运行项目原有的构建和检查，在提交或 PR 中记录采用的版本，便于下次选对基线。若找不到可信的旧包，用新版在临时目录生成同配置的参考项目，再按项目文件逐项比对和合并。

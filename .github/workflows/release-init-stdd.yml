@@ -1,0 +1,104 @@
+name: Release init-stdd
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag matching init-stdd/VERSION
+        type: string
+        required: true
+      publish:
+        description: Publish and mark Latest (unchecked only verifies the current published release)
+        type: boolean
+        default: false
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: init-stdd-release
+  cancel-in-progress: false
+
+env:
+  STDD_RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+jobs:
+  check:
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Require main for publishing
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        run: |
+          if [[ "$GITHUB_REF" != refs/heads/main ]]; then
+            printf 'Dispatch a release from main. Current ref: %s\n' "$GITHUB_REF" >&2
+            exit 1
+          fi
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - name: Check release candidate
+        run: python3 -B scripts/check_init_stdd_release.py --tag "$STDD_RELEASE_TAG"
+      - name: Run regression checks
+        run: |
+          python3 -B -m unittest discover -s tests -v
+          make -C stdd-use-demo check
+      - name: Verify the published download
+        if: github.event_name == 'release' || !inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          args=(--tag "$STDD_RELEASE_TAG" --check-latest)
+          if [[ "$GITHUB_EVENT_NAME" == release ]]; then
+            args+=(--commit "$GITHUB_SHA")
+          fi
+          python3 -B scripts/check_init_stdd_release.py "${args[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/main'
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - name: Create or check the release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag_ref="refs/tags/$STDD_RELEASE_TAG"
+          remote_tag="$(git ls-remote origin "$tag_ref")"
+          if [[ -z "$remote_tag" ]]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" --silent \
+              -f ref="$tag_ref" -f sha="$GITHUB_SHA"
+          fi
+          git fetch --no-tags origin "$tag_ref"
+          tag_commit="$(git rev-parse 'FETCH_HEAD^{commit}')"
+          if [[ "$tag_commit" != "$GITHUB_SHA" ]]; then
+            printf '%s points to %s. Expected %s.\n' "$STDD_RELEASE_TAG" "$tag_commit" "$GITHUB_SHA" >&2
+            exit 1
+          fi
+      - name: Publish GitHub Latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$STDD_RELEASE_TAG" STDD-SDD/init-stdd.zip --repo "$GITHUB_REPOSITORY" \
+            --verify-tag --latest --title "$STDD_RELEASE_TAG" --generate-notes
+      - name: Verify the published download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 -B scripts/check_init_stdd_release.py --tag "$STDD_RELEASE_TAG" --check-latest \
+            --commit "$GITHUB_SHA" | tee -a "$GITHUB_STEP_SUMMARY"

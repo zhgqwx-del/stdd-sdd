@@ -128,4 +128,4 @@ git diff --no-index -- "$stdd_target/.agents/skills/stdd-wrap" "$stdd_reference/
 
 准备提交或 PR 时，用 `stdd-wrap` 刷新真实合入目标，按项目策略快进或 rebase，处理冲突后复跑检查并记录受测版本。共享历史、脏工作区、离线或中途交接按项目约定处理。 [详细说明](.agents/skills/init-stdd/references/usage.md#方案和-git-工作方式)
 
-项目按自己的测试、联调和交付流程执行验收。项目检查、验收证据和 ZIP 发布三道门禁暂列后续待办。 [待办与当前做法](<STDD 与 SDD 实践手册.md#7-后续待完善的测试与门禁>)
+项目按自己的测试、联调和交付流程执行验收。本仓库的 ZIP 发布通过 GitHub Actions 校验，项目检查和验收证据门禁仍在完善。 [门禁状态与当前做法](<STDD 与 SDD 实践手册.md#7-后续待完善的测试与门禁>)

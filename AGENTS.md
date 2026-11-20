@@ -34,9 +34,19 @@
 每次更新 `init-stdd` 或其分发的 `stdd-*` 技能，按以下顺序完成交付。
 
 1. 同步[实践手册](<STDD-SDD/STDD 与 SDD 实践手册.md>)和[技能源码](STDD-SDD/.agents/skills/init-stdd/)，核对技能行为、使用步骤和示例是否一致。涉及的快速上手、使用说明、生成模板和演练副本一并更新。
-2. 将技能源码的 `VERSION` 更新为本次发布标签，再重新构建 [init-stdd.zip](STDD-SDD/init-stdd.zip)。核对文件清单及逐文件内容，解压后验证受影响的初始化配置。通过后提交并推送这批更新。
-3. 在 GitHub Releases 发布指向该提交的版本，上传仓库中的同一份 `init-stdd.zip`，并设为 Latest。
-4. 发布后从快速上手的[下载最新版](https://github.com/zhgqwx-del/stdd-sdd/releases/latest/download/init-stdd.zip)链接实际下载，确认获取的是刚发布的附件，并比对下载文件与仓库 ZIP 的 SHA-256。交付时记录版本、提交和下载验证结果。
+2. 将技能源码的 `VERSION` 更新为本次发布标签，再重新构建 [init-stdd.zip](STDD-SDD/init-stdd.zip)。运行下方的本地发布检查，通过后提交并推送这批更新。
+3. 从 `main` 运行 [Release init-stdd](.github/workflows/release-init-stdd.yml)，填写相同的标签并勾选 `publish`。工作流先核对手册和下载入口、源码及 ZIP，再跑回归。通过后才创建或核对标签，上传仓库 ZIP，并发布为 Latest。
+4. 同一工作流从快速上手的[下载最新版](https://github.com/zhgqwx-del/stdd-sdd/releases/latest/download/init-stdd.zip)链接实际下载，核对标签所指提交、发布附件和仓库 ZIP 的 SHA-256。交付时记录版本、提交、工作流和下载验证结果。复核已发布版本时保持 `publish` 未勾选。
+
+从仓库根目录运行发布前检查和发布命令。
+
+```sh
+stdd_tag="$(cat STDD-SDD/.agents/skills/init-stdd/VERSION)"
+python3 -B scripts/check_init_stdd_release.py --tag "$stdd_tag"
+gh workflow run release-init-stdd.yml --ref main -f tag="$stdd_tag" -f publish=true
+```
+
+手动发布也会触发已发布附件的检查。若发布后检查失败，可在核对 GitHub Release 及其附件后运行只读复核。工作流会报告失败并保留发布现场。
 
 仅修改 `AGENTS.md` 等仓库维护文档，且改动不影响技能源码或分发包时，提交并推送即可，无需重打包或更新 GitHub Releases。
 
@@ -47,7 +57,7 @@
 - 行为变更先核对现行规格、验收场景及实施方案；会话或工单中已确认的同范围方案可直接沿用。
 - 演练的 `specs/` 记录已交付行为，`changes/archive/` 保留历史变更；需求和场景 ID 保持稳定。归档时核对讨论、ADR 与变更的双向链接。
 - `check_traceability.py` 检查现行规格中的编号和 `REQ → AC` 引用关系；测试覆盖、实际通过结果和受测版本由测试及验收证据说明。
-- 实践手册第 7 节将项目检查、验收证据、ZIP 发布三类门禁列为后续待办。按任务推进，保持文档对已实现能力与待办的描述准确。
+- 实践手册第 7 节记录已接通的 ZIP 发布门禁，以及仍待完善的项目检查和验收证据门禁。
 
 ## 本地验证
 
@@ -64,7 +74,7 @@ python3 -B STDD-SDD/.agents/skills/init-stdd/scripts/init_stdd.py --help
 - 演练规则或用例变动：运行定向验收和 `make check`，同步相关规格与记录。
 - 初始化器或资源变动：在临时目录生成受影响配置；影响公共生成逻辑时覆盖三种配置，核对入口、技能目录及已有文件保留。生成的 `demo` 再运行 `make check`。
 - 升级逻辑变动：运行 `python3 -B -m unittest discover -s tests -v`，并用历史 ZIP 核对升级预览和实际结果。
-- 分发包变动：核对 ZIP 文件清单及逐文件内容与技能源码一致。
-- 本仓库根目录尚无统一检查或发布流水线；子目录里的 `.github/workflows/check.yml` 用于教学项目，不能作为本仓库根级 CI 已通过的证据。
+- 分发包变动：运行上文的发布前检查，核对文件清单、逐文件内容和解压后初始化结果。已发布版本可以给同一命令加 `--check-latest`，核对公开下载。
+- 根级 Release init-stdd 的运行记录提供发包证据。子目录里的 `.github/workflows/check.yml` 用于教学项目。
 
 Git 操作前核对当前分支、工作区及任务授权；保留已有改动，按实际受测内容报告结果。

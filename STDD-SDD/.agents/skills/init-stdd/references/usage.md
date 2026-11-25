@@ -77,7 +77,7 @@ flowchart TD
     end
 
     Init["新建项目或接入已有项目<br/>默认 team + all"]
-    Start["$stdd-start<br/>核对基线与分支，起草变更"]
+    Start["$stdd-start<br/>确认基线，建立或复用开发分支"]
     Diagnose["$stdd-diagnose<br/>复现缺陷并形成回归场景"]
     Spec["起草规格、验收场景和简短实施方案"]
     Records["按项目约定记录讨论或 ADR<br/>从 change.md 链接"]
@@ -92,11 +92,10 @@ flowchart TD
     Manual -->|按指南操作| Init
     Skill -->|在 Agent 中调用| Init
     Package -->|解压后安装技能或运行脚本| Init
-    Init -->|继续已创建的首个变更| Spec
-    Init -->|后续开新需求| Start
+    Init -->|开始首个或后续变更| Start
     Init -->|收到缺陷反馈| Diagnose
     Start --> Spec
-    Diagnose -->|决定修复后| Spec
+    Diagnose -->|决定修复后| Start
     Spec --> Confirm
     Spec -.->|多轮讨论或长期取舍| Records
     Records --> Confirm
@@ -111,7 +110,7 @@ flowchart TD
     Done -.->|准备发版或总结迭代时| Release
 ```
 
-项目已经生成首个变更时，先完善并确认规格和 `tasks.md` 中的实施方案，再进入开发。直接调用 `stdd-delivery` 时也会检查确认记录。团队先开 PR 时，可以先用 `stdd-wrap` 准备草稿，再在 PR 中用 `stdd-review`。
+项目已经生成首个变更草稿时，可以用 `stdd-start` 确认开发分支并复用该目录。规格和 `tasks.md` 中的实施方案确认后进入开发。直接调用 `stdd-delivery` 时也会检查确认记录。团队先开 PR 时，可以先用 `stdd-wrap` 准备草稿，再在 PR 中用 `stdd-review`。
 
 ## 配置决定要生成什么
 
@@ -134,9 +133,9 @@ python3 -B scripts/init_stdd.py ../stdd-training --profile demo
 
 ## 方案和 Git 工作方式
 
-`stdd-start` 默认先写简短实施方案，说明修改入口、关键取舍和如何验收。方案确认后，`stdd-delivery` 先写测试，再实现和复跑。已经有同范围确认记录时可以直接引用。
+在 Git 项目中，`stdd-start` 默认先从任务指定的主干、项目约定的主干或已确认的仓库默认主干建立新功能分支，然后写入规格、验收场景和实施方案。续接同一功能时复用原分支。当前工作区有其他任务的改动时使用独立 worktree。仅做只读分析时可沿用当前工作区。 [开工 Git 约定](../assets/base/docs/stdd/git-workflow.md#开工)
 
-基线、真实合入目标、远端和同步策略记录在 `change.md` 或仓库规则中。功能分支的 upstream 不一定是合入目标。`stdd-start` 以远端为基线时先刷新并记录 SHA，离线时注明本地来源和未刷新状态。
+以远端为基线时先 fetch，再直接从解析出的 SHA 创建开发分支。离线时记录已确认的本地引用和未刷新状态。在 `change.md` 记录开发分支或工作树、基线 SHA、真实合入目标和同步策略。实施方案写明修改入口、关键取舍和验收方式。方案确认后，`stdd-delivery` 先写测试，再实现和复跑。已经有同范围确认记录时可以直接引用。
 
 准备提交或 PR 时，`stdd-wrap` 默认 fetch 真实目标并固定本轮 SHA，按提交关系跳过、快进或 rebase。未发布的本次提交和项目允许改写的个人分支适用 rebase；共享历史、脏工作区和已有 Git 操作按初始化后的 `docs/stdd/git-workflow.md` 处理。语义冲突保留现场并列出待决定事项。同步及冲突处理完成后，同步发生变化的依赖，重跑定向验收和项目要求的检查，再记录受测候选及交付状态。已有项目规定 merge、仅中途交接或没有远端时，沿用实际范围并注明状态。
 

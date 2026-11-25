@@ -24,7 +24,7 @@ python3 -B "$stdd_script" "$stdd_target" --dry-run
 python3 -B "$stdd_script" "$stdd_target"
 ```
 
-默认 `team` + `all` 会把项目文档、模板、三个脚本、PR 模板和七个研发技能放入目标项目，供 Codex、Claude Code 和 Qoder 使用。首次初始化成功后，项目根目录的 `.stdd-version` 会记录采用的发布标签，可随项目提交。`init-stdd` 本身留在解压目录，可给其他项目复用。准备开始首个需求时，在 Agent 里打开目标项目，用 `stdd-start` 核对现有行为和测试入口，再完善生成的首个变更草稿。
+默认 `team` + `all` 会把项目文档、模板、三个脚本、PR 模板和七个研发技能放入目标项目，供 Codex、Claude Code 和 Qoder 使用。首次初始化成功后，项目根目录的 `.stdd-version` 会记录采用的发布标签，可随项目提交。`init-stdd` 本身留在解压目录，可给其他项目复用。准备开始首个需求时，在 Agent 里打开目标项目，用 `stdd-start` 确认开发工作区，核对现有行为和测试入口，再完善生成的变更草稿。
 
 ## 方式二：在项目里安装并调用技能
 
@@ -124,7 +124,7 @@ git diff --no-index -- "$stdd_target/.agents/skills/stdd-wrap" "$stdd_reference/
 
 初始化后先打开项目的 **`docs/stdd/project.md`**，找到当前变更和四角色入口。然后打开 **`docs/stdd/workflows.md` →「使用顺序」**，查看七个研发技能的流程图和适用场景。 [查看演练项目里的工作流示例](../stdd-use-demo/docs/stdd/workflows.md#使用顺序)
 
-确认规格、验收和实施方案后，用 `stdd-delivery` 先写验收测试，再实现。后续开新需求时用 `stdd-start`。
+在 Git 项目中，用 `stdd-start` 为新功能从指定或默认主干建分支，续接同一功能时复用原分支。工作区有其他任务的改动时使用独立 worktree。进入选定工作区后再写入规格和方案。确认规格、验收和实施方案后，用 `stdd-delivery` 先写验收测试，再实现。 [开工 Git 约定](.agents/skills/init-stdd/assets/base/docs/stdd/git-workflow.md#开工)
 
 准备提交或 PR 时，用 `stdd-wrap` 刷新真实合入目标，按项目策略快进或 rebase，处理冲突后复跑检查并记录受测版本。共享历史、脏工作区、离线或中途交接按项目约定处理。 [详细说明](.agents/skills/init-stdd/references/usage.md#方案和-git-工作方式)
 

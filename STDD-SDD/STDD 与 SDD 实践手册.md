@@ -18,7 +18,7 @@ flowchart TD
     end
 
     Init["新建项目或接入已有项目<br/>默认 team + all"]
-    Start["$stdd-start<br/>核对基线与分支，起草变更"]
+    Start["$stdd-start<br/>确认基线，建立或复用开发分支"]
     Diagnose["$stdd-diagnose<br/>复现缺陷并形成回归场景"]
     Spec["起草规格、验收场景和简短实施方案"]
     Records["按项目约定记录讨论或 ADR<br/>从 change.md 链接"]
@@ -33,11 +33,10 @@ flowchart TD
     Manual -->|按指南操作| Init
     Skill -->|在 Agent 中调用| Init
     Package -->|解压后安装技能或运行脚本| Init
-    Init -->|继续已创建的首个变更| Spec
-    Init -->|后续开新需求| Start
+    Init -->|开始首个或后续变更| Start
     Init -->|收到缺陷反馈| Diagnose
     Start --> Spec
-    Diagnose -->|决定修复后| Spec
+    Diagnose -->|决定修复后| Start
     Spec --> Confirm
     Spec -.->|多轮讨论或长期取舍| Records
     Records --> Confirm
@@ -52,7 +51,7 @@ flowchart TD
     Done -.->|准备发版或总结迭代时| Release
 ```
 
-七个研发技能随 `team` 或 `demo` 生成。首个变更已有草稿时，先用现有文档完善规格和实施方案。确认后开始写测试与实现。只生成 `spec` 时，可以先评审规格、方案和验收计划。团队习惯先开 PR 时，可先用 `$stdd-wrap` 准备草稿，再在 PR 中用 `$stdd-review`。 [已完成的运费演练](../stdd-use-demo/README.md)
+七个研发技能随 `team` 或 `demo` 生成。首个变更已有草稿时，用 `$stdd-start` 确认开发工作区，再复用已有目录完善规格和实施方案。确认后开始写测试与实现。只生成 `spec` 时，可以先评审规格、方案和验收计划。团队习惯先开 PR 时，可先用 `$stdd-wrap` 准备草稿，再在 PR 中用 `$stdd-review`。 [已完成的运费演练](../stdd-use-demo/README.md)
 
 ## 1. 方法与标准
 
@@ -248,7 +247,7 @@ project/
 
 | 原技能 | 脚手架里的做法 |
 | --- | --- |
-| `dev-start` | `$stdd-start` 刷新已确认的远端基线，记录基线 SHA、真实合入目标、同步策略、测试入口与已知失败，再起草规格及实施方案。分支方式沿用项目约定 |
+| `dev-start` | `$stdd-start` 确认基线和合入目标，为新功能建立分支或复用原分支，再核对测试入口、起草规格及实施方案 |
 | `branch-review` | `$stdd-review` 固定目标与候选 SHA，从实际候选读取代码，沿调用方及删除影响检查增量。工作区审查包含相关未跟踪文件，报告注明未深入审查和未实测范围 |
 | `test-report` | `$stdd-test-report` 按受影响场景组织自动与手工验收，记录用例数量及失败、阻塞、跳过状态，复用旧产物前核对版本。报告不修改业务代码，也不把零条预期用例或未验场景计为通过 |
 | `dev-wrap`、`ptal` | `$stdd-wrap` 承接文档同步、目标刷新、按策略 rebase、冲突处理、依赖同步和复测，在 `verification.md` 记录最终受测内容。项目约定决定共享历史、squash 和推送方式 |
@@ -258,6 +257,8 @@ project/
 | `mono-workspace` | 多仓任务按需接入既有技能与其目录生成器，继续用同一规格和各仓受测 SHA 做联合验收 |
 
 原 `dev-wrap` 把 rebase 和提交前检查交给 `ptal`。通用脚手架直接在 `stdd-wrap` 承接这些步骤，项目无需额外安装 `ptal` 或其检查脚本。参考项目的固定分支、任务号格式、Bun 命令、日志规则、迭代周历和发布接口由接入项目自行约定。`stdd-delivery` 继续负责已确认切片的测试先行与实现；无需为技能对齐另建重复流程。
+
+Git 项目中新功能默认从任务指定的主干、项目约定的主干或已确认的仓库默认主干建立分支，再写入规格、验收和实施方案。远端基线先 fetch，再直接从解析出的 SHA 创建分支。续接同一功能时复用原分支。当前工作区有其他任务的改动时使用独立 worktree。仅做只读分析时可沿用当前工作区。 [开工 Git 约定](.agents/skills/init-stdd/assets/base/docs/stdd/git-workflow.md#开工)
 
 默认收尾先刷新真实目标并固定 SHA，再根据提交关系跳过、快进或 rebase。工作区需可安全整理；共享的已发布历史按项目合并方式处理。冲突依据双方意图和已确认场景解决，无法决定时保留现场及续接入口。同步、冲突处理及提交整理之后，以最终候选重跑适用检查，记录真实受测版本。无远端、离线、中途交接或项目另有策略时注明实际状态。 [Git 工作方式](.agents/skills/init-stdd/assets/base/docs/stdd/git-workflow.md#收尾同步)
 
@@ -283,7 +284,7 @@ project/
 
 1. 按[运费报价演练](../stdd-use-demo/README.md)初始化一个 `demo` 副本，然后运行 `make check` 验证 99 元免邮基线。示例使用 Python 标准库，应用代码、技能目录和 `.github/` 可一起版本化。
 2. 对照 [REQ-SHIP-001](../stdd-use-demo/changes/archive/002-free-shipping-threshold/spec.md#req-ship-001) 和 [AC-SHIP-001](../stdd-use-demo/changes/archive/002-free-shipping-threshold/spec.md#ac-ship-001)，先修改验收用例，再把门槛改成 129 元。定向测试会先在旧实现上捕获两处差异，改动后复跑。 [验收用例](../stdd-use-demo/tests/acceptance/test_shipping_quote.py) · [本地验收记录](../stdd-use-demo/changes/archive/002-free-shipping-threshold/verification.md)
-3. 为真实项目挑一项范围清晰的变更，复制 `change.md` 和 `spec.md` 模板，拉需求方一起写至少一个正常和一个相关边界或失败示例。定向命令测试这些场景，完整命令验证既有行为。
+3. 为真实项目挑一项范围清晰的变更，用 `$stdd-start` 确认开发工作区并起草变更。拉需求方一起写至少一个正常和一个相关边界或失败示例。定向命令测试这些场景，完整命令验证既有行为。
 4. 合并前从一个 `REQ` 随机追到 `AC`、测试和 CI，再从一条失败用例反追业务规则。覆盖差距可以从受影响场景中统计，按已自动验证、已手工验证和待验证记录。评审仍要核对断言是否能区分正确与错误的实现。
 
 跨前后端的验收可以用同一份清单记录默认行为、筛选分页、错误返回和租户隔离。证据中标明规格版本、前后端各自的受测提交、浏览器版本、测试数据和逐项观察结果。

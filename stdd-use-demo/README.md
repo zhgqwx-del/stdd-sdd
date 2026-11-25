@@ -16,30 +16,34 @@ python3 -B -c 'from shipping.quote import quote_shipping; print(*(quote_shipping
 
 ## 第一步 初始化一个练习副本
 
-在 Codex 中打开仓库内的 `STDD-SDD` 目录，使会话能发现其中的 `$init-stdd`。输入下面这段，请 Agent 先生成项目和规格草稿。
-
-```text
-用 $init-stdd 在当前 Git 仓库的根目录下初始化 stdd-use-demo-replay，选择 demo 配置。
-项目目标是将免运费门槛从 99 元提高到 129 元，低于门槛收 8 元，继续使用整数分并拒绝无效输入。
-变更 ID 用 002-free-shipping-threshold。先生成四角色入口与变更草稿。
-```
-
-也可以从终端直接运行脚本。选其中一种方式即可。从仓库根目录运行下面的命令。之后可在 Codex 中让 Agent 结合项目内容起草规格。
+从仓库根目录运行以下命令，在仓库外创建独立练习副本。先验证 99 元免邮规则，将生成的骨架和变更模板提交到练习副本的本地 `main` 作为基线。
 
 ```sh
-python3 -B STDD-SDD/.agents/skills/init-stdd/scripts/init_stdd.py stdd-use-demo-replay \
+stdd_demo_source="$(pwd -P)/stdd-use-demo"
+stdd_demo_target="$(mktemp -d)/stdd-use-demo-replay"
+python3 -B STDD-SDD/.agents/skills/init-stdd/scripts/init_stdd.py "$stdd_demo_target" \
   --profile demo \
   --name 'STDD 运费报价演练' \
-  --goal '满 129 元免运费，低于门槛收 8 元，继续使用整数分并拒绝无效输入。' \
   --change-id 002-free-shipping-threshold \
   --change-title '将免运费门槛调整到 129 元'
-cd stdd-use-demo-replay
+cd "$stdd_demo_target"
 make check
+git init -b main
+git add .
+git -c user.name='STDD Demo' -c user.email='stdd-demo@example.com' commit -m '记录 99 元免邮演练基线'
 ```
 
-这时 `make check` 验证的是脚手架自带的 99 元基线。实际项目已有技术栈或准备自己写代码时，通常用 `--profile team` 带入协作文件、技能和脚本。
+也可以在 Codex 中打开仓库内的 `STDD-SDD` 目录，请 `$init-stdd` 在仓库外的临时目录生成 `demo` 配置、四角色入口和 `002-free-shipping-threshold` 模板。然后进入练习副本验证并提交本地 `main` 基线。实际项目已有技术栈时，通常用 `--profile team` 带入协作文件、技能和脚本。
 
 ## 第二步 四个角色对齐规格
+
+在 Codex 中打开练习副本，用 `$stdd-start` 从本地 `main` 建分支，再复用生成的变更目录。
+
+```text
+用 $stdd-start 开始 002-free-shipping-threshold，从本地 main 创建 feat/002-free-shipping-threshold。
+目标是满 129 元免运费，低于门槛收 8 元，继续使用整数分并拒绝无效输入。
+进入开发分支后，完善已有的规格、验收场景和实施方案。
+```
 
 打开练习副本的 `docs/stdd/project.md`，沿链接进入 `changes/002-free-shipping-threshold/`。下面是本次已经填写好的例子。
 
@@ -54,10 +58,10 @@ make check
 
 ## 第三步 先让新测试失败
 
-更新 `tests/acceptance/test_shipping_quote.py`。应收费的用例放入 `0`、`9900` 和 `12899`，刚好达到和超过门槛的用例分别使用 `12900` 和 `12901`，保留无效输入用例。也可以在练习副本根目录直接复制本项目的测试文件。
+更新 `tests/acceptance/test_shipping_quote.py`。应收费的用例放入 `0`、`9900` 和 `12899`，刚好达到和超过门槛的用例分别使用 `12900` 和 `12901`，保留无效输入用例。也可以在选定的开发工作区直接复制本项目的测试文件。`stdd_demo_source` 指向原仓库的 `stdd-use-demo` 目录。
 
 ```sh
-cp ../stdd-use-demo/tests/acceptance/test_shipping_quote.py tests/acceptance/test_shipping_quote.py
+cp "$stdd_demo_source/tests/acceptance/test_shipping_quote.py" tests/acceptance/test_shipping_quote.py
 make test-acceptance
 ```
 
@@ -75,6 +79,6 @@ make test-acceptance
 
 本演练的 `change.md` 还链接了金额单位的讨论和 ADR。打开其中任意一份记录，都可以反查已归档的变更。 [讨论与 ADR 示例](changes/archive/002-free-shipping-threshold/change.md#关联讨论与-adr)
 
-以后在项目根目录启动新的 Codex 会话，可以用 `$stdd-start` 建立下一项变更，再用 `$stdd-delivery` 实现，用 `$stdd-test-report` 补齐验收证据。 [项目与四角色入口](docs/stdd/project.md) · [研发技能与脚本](docs/stdd/workflows.md)
+下次用 `$stdd-start` 续接同一功能时，复用原分支或其 worktree。开下一项新功能时，从指定或默认主干另建分支。当前工作区有其他任务的改动时，在独立 worktree 继续。方案确认后用 `$stdd-delivery` 实现，再用 `$stdd-test-report` 补齐验收证据。 [项目与四角色入口](docs/stdd/project.md) · [研发技能与脚本](docs/stdd/workflows.md)
 
 在有远端的团队项目里，准备提交或 PR 时用 `$stdd-wrap` 刷新真实合入目标，按策略快进或 rebase，处理冲突后同步变化的依赖并复跑检查，记录目标 SHA 与实际受测内容。这个教学演练也可以仅在本地重跑，此时注明本地验收状态即可。 [收尾同步与冲突处理](docs/stdd/git-workflow.md#收尾同步)

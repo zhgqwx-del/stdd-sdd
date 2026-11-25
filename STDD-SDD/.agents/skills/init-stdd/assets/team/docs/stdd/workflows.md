@@ -6,12 +6,12 @@
 
 ## 使用顺序
 
-从[项目入口](project.md)找到当前变更。先明确规格和验收场景，再在 `tasks.md` 写修改位置、关键取舍和验收方式。方案确认后进入测试与实现。复杂变更可单独写技术设计。
+从[项目入口](project.md)找到当前变更。在 Git 项目中，新功能先从任务指定、项目约定或仓库默认主干建立开发分支，续接同一功能时复用原分支。当前工作区有其他任务的改动时使用独立 worktree。进入选定工作区后再起草规格、验收场景和 `tasks.md`。方案确认后进入测试与实现。 [开工 Git 约定](git-workflow.md#开工)
 
 ```mermaid
 flowchart TD
     Init["项目已初始化<br/>从项目入口找到当前变更"]
-    Start["stdd-start<br/>核对基线与分支，起草变更"]
+    Start["stdd-start<br/>确认基线，建立或复用开发分支"]
     Diagnose["stdd-diagnose<br/>复现缺陷并形成回归场景"]
     Spec["起草规格、验收场景和简短实施方案"]
     Records["按项目约定记录讨论或 ADR<br/>从 change.md 链接"]
@@ -23,11 +23,10 @@ flowchart TD
     Done["按项目流程合入或交接"]
     Release["stdd-release-notes<br/>按版本范围整理发布说明或迭代总结"]
 
-    Init -->|继续已创建的首个变更| Spec
-    Init -->|后续开新需求| Start
+    Init -->|开始首个或后续变更| Start
     Init -->|收到缺陷反馈| Diagnose
     Start --> Spec
-    Diagnose -->|决定修复后| Spec
+    Diagnose -->|决定修复后| Start
     Spec --> Confirm
     Spec -.->|多轮讨论或长期取舍| Records
     Records --> Confirm
@@ -48,7 +47,7 @@ flowchart TD
 
 | 阶段 | 技能 | 工作产物 |
 | --- | --- | --- |
-| 开工 | [stdd-start](../../{{SKILLS_ROOT}}/stdd-start/SKILL.md) | 基线 SHA、真实合入目标和同步策略、规格与简短实施方案、相关讨论和 ADR |
+| 开工 | [stdd-start](../../{{SKILLS_ROOT}}/stdd-start/SKILL.md) | 开发分支或工作树、基线 SHA、真实合入目标和同步策略、规格与实施方案、相关讨论和 ADR |
 | 实现 | [stdd-delivery](../../{{SKILLS_ROOT}}/stdd-delivery/SKILL.md) | 按已确认方案和场景编写用例、实现并复跑 |
 | 排查 | [stdd-diagnose](../../{{SKILLS_ROOT}}/stdd-diagnose/SKILL.md) | 用[诊断模板](templates/diagnosis.md)记录资料来源、发生时段、复现状态及回归场景 |
 | 验收 | [stdd-test-report](../../{{SKILLS_ROOT}}/stdd-test-report/SKILL.md) | 按场景记录自动、手工、失败和待验结果，核对历史证据版本及用例数量 |
